@@ -88,11 +88,18 @@ const timerEl = document.getElementById("timer");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const resetBtn = document.getElementById("resetBtn");
+const scoreboardBody = document.getElementById("scoreboardBody");
+const playerNameInput = document.getElementById("playerNameInput");
+const addPlayerBtn = document.getElementById("addPlayerBtn");
+const playerSelect = document.getElementById("playerSelect");
+const saveTimeBtn = document.getElementById("saveTimeBtn");
+const scoreStatus = document.getElementById("scoreStatus");
 
 if (timerEl && startBtn && stopBtn && resetBtn) {
   let startTime = 0;
   let elapsedBefore = 0;
   let rafId = null;
+  const players = [];
 
   const formatTime = (ms) => {
     const totalCentiseconds = Math.floor(ms / 10);
@@ -108,6 +115,116 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     const elapsed = elapsedBefore + (now - startTime);
     timerEl.textContent = formatTime(elapsed);
     rafId = requestAnimationFrame(update);
+  };
+
+  const getCurrentElapsed = () => {
+    if (rafId === null) return elapsedBefore;
+    return elapsedBefore + (performance.now() - startTime);
+  };
+
+  const setScoreStatus = (message) => {
+    if (scoreStatus) scoreStatus.textContent = message;
+  };
+
+  const renderPlayerOptions = () => {
+    if (!playerSelect) return;
+    playerSelect.innerHTML = "";
+
+    if (players.length === 0) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No player";
+      playerSelect.appendChild(option);
+      playerSelect.disabled = true;
+      return;
+    }
+
+    playerSelect.disabled = false;
+    players.forEach((player) => {
+      const option = document.createElement("option");
+      option.value = player.id;
+      option.textContent = player.name;
+      playerSelect.appendChild(option);
+    });
+  };
+
+  const renderScoreboard = () => {
+    if (!scoreboardBody) return;
+    scoreboardBody.innerHTML = "";
+
+    const ranked = players
+      .filter((player) => Number.isFinite(player.bestMs))
+      .sort((a, b) => a.bestMs - b.bestMs);
+
+    if (ranked.length === 0) {
+      const row = document.createElement("tr");
+      row.innerHTML = "<td>-</td><td>No score yet</td><td>--:--.--</td>";
+      scoreboardBody.appendChild(row);
+      return;
+    }
+
+    ranked.forEach((player, index) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${index + 1}</td><td>${player.name}</td><td>${formatTime(player.bestMs)}</td>`;
+      scoreboardBody.appendChild(row);
+    });
+  };
+
+  const addPlayer = () => {
+    if (!playerNameInput) return;
+    const name = playerNameInput.value.trim();
+    if (!name) {
+      setScoreStatus("Please enter a player name.");
+      return;
+    }
+
+    const exists = players.some(
+      (player) => player.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (exists) {
+      setScoreStatus("Player name already exists.");
+      return;
+    }
+
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
+    players.push({ id, name, bestMs: Number.POSITIVE_INFINITY });
+    playerNameInput.value = "";
+    renderPlayerOptions();
+    renderScoreboard();
+    playerSelect.value = id;
+    setScoreStatus(`Added player: ${name}`);
+  };
+
+  const saveTimeForPlayer = () => {
+    if (!playerSelect || !playerSelect.value) {
+      setScoreStatus("Please add/select a player first.");
+      return;
+    }
+
+    const player = players.find((item) => item.id === playerSelect.value);
+    if (!player) {
+      setScoreStatus("Player not found.");
+      return;
+    }
+
+    const currentMs = getCurrentElapsed();
+    if (currentMs <= 0) {
+      setScoreStatus("Timer is zero. Run timer before saving.");
+      return;
+    }
+
+    if (currentMs < player.bestMs) {
+      player.bestMs = currentMs;
+      setScoreStatus(`Saved new best for ${player.name}: ${formatTime(currentMs)}`);
+    } else {
+      setScoreStatus(
+        `${player.name} time ${formatTime(currentMs)} is slower than best ${formatTime(player.bestMs)}`,
+      );
+    }
+    renderScoreboard();
   };
 
   startBtn.addEventListener("click", () => {
@@ -133,6 +250,15 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     elapsedBefore = 0;
     timerEl.textContent = "00:00.00";
   });
+
+  addPlayerBtn?.addEventListener("click", addPlayer);
+  playerNameInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") addPlayer();
+  });
+  saveTimeBtn?.addEventListener("click", saveTimeForPlayer);
+
+  renderPlayerOptions();
+  renderScoreboard();
 }
 
 const enableCamsBtn = document.getElementById("enableCamsBtn");

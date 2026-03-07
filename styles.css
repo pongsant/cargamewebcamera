@@ -391,6 +391,45 @@ th {
   font-size: 0.9rem;
 }
 
+.score-controls {
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.score-controls label {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.score-row {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+}
+
+.score-input {
+  flex: 1;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111827;
+  font-size: 0.86rem;
+  padding: 0.48rem 0.55rem;
+}
+
+.score-status {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 @media (max-width: 1100px) {
   .dashboard {
     grid-template-columns: 1fr;

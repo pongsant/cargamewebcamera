@@ -110,24 +110,23 @@
               <th>Time</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>Car A</td>
-              <td>01:24.53</td>
-            </tr>
-            <tr>
-              <td>2</td>
-              <td>Car B</td>
-              <td>01:27.10</td>
-            </tr>
-            <tr>
-              <td>3</td>
-              <td>Car C</td>
-              <td>01:31.75</td>
-            </tr>
-          </tbody>
+          <tbody id="scoreboardBody"></tbody>
         </table>
+      </div>
+
+      <div class="score-controls">
+        <label for="playerNameInput">Add Player</label>
+        <div class="score-row">
+          <input id="playerNameInput" class="score-input" type="text" placeholder="Player name" />
+          <button id="addPlayerBtn" class="btn" type="button">Add</button>
+        </div>
+
+        <label for="playerSelect">Save Time To</label>
+        <div class="score-row">
+          <select id="playerSelect" class="cam-select"></select>
+          <button id="saveTimeBtn" class="btn primary" type="button">Save Time</button>
+        </div>
+        <p id="scoreStatus" class="score-status">Add a player to start recording scores.</p>
       </div>
 
       <div class="game-info">
