@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Race Control - Live Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top-bar broadcast-bar">
+    <p class="broadcast-title">Remote Racing Cup 2026 - Live Control Feed</p>
+    <p class="broadcast-warning">WARNING: Keep track clear and maintain safe operating distance.</p>
+  </header>
+
+  <main class="dashboard">
+    <section class="panel race-feed">
+      <div class="feed-header">
+        <h2>Live Multi-Cam Feed</h2>
+        <a class="btn ghost" href="start.html">Exit</a>
+      </div>
+
+      <div class="broadcast-layout">
+        <div class="mini-cam-column">
+          <article class="mini-cam">
+            <h3>Back Cam</h3>
+            <img src="http://192.168.1.198" alt="Back camera feed" />
+          </article>
+
+          <article class="mini-cam">
+            <h3>Front Cam</h3>
+            <img src="https://placehold.co/320x180/161b22/bac4cf?text=Front+Cam" alt="Front camera feed" />
+          </article>
+
+          <article class="mini-cam">
+            <h3>Top Cam</h3>
+            <img src="https://placehold.co/320x180/161b22/bac4cf?text=Top+Cam" alt="Top camera feed" />
+          </article>
+        </div>
+
+        <article class="main-feed">
+          <img src="https://placehold.co/1280x720/0e1116/b8c2cc?text=Main+Track+Camera" alt="Main track camera feed" />
+          <div class="main-overlay">
+            <span class="live-pill">LIVE</span>
+            <span class="session-label">Session: Final Heat</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="hud-strip">
+        <div class="hud-item">
+          <p class="hud-label">Current Lap</p>
+          <p class="hud-value">08 / 10</p>
+        </div>
+        <div class="hud-item">
+          <p class="hud-label">Fastest Lap</p>
+          <p class="hud-value">00:58.34</p>
+        </div>
+        <div class="hud-item">
+          <p class="hud-label">Track</p>
+          <p class="hud-value">Engineering Loop A</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel side-panel clean-panel">
+      <div class="panel-title-wrap">
+        <h2>Timer Control</h2>
+      </div>
+
+      <div class="timer-box">
+        <p id="timer" class="timer">00:00.00</p>
+        <div class="timer-actions">
+          <button id="startBtn" class="btn primary" type="button">Start</button>
+          <button id="stopBtn" class="btn" type="button">Stop</button>
+          <button id="resetBtn" class="btn" type="button">Reset</button>
+        </div>
+      </div>
+
+      <div class="panel-title-wrap">
+        <h2>Scoreboard</h2>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Driver</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Car A</td>
+              <td>01:24.53</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Car B</td>
+              <td>01:27.10</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Car C</td>
+              <td>01:31.75</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="game-info">
+        <h2>Game Brief</h2>
+        <p>
+          All cars launch at the same time and race for a fixed number of laps. The lowest total race time wins.
+          Use the three camera feeds to monitor positions and use the timer controls to manage the session.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

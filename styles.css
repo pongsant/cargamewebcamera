@@ -1,0 +1,377 @@
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --line: #dde3ea;
+  --text: #10161e;
+  --muted: #5d6a79;
+  --accent: #10161e;
+  --feed-bg: #f8fafc;
+  --feed-line: #d9e1ea;
+  --alert: #d81f2a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at 10% 10%, #ffffff 0%, #f2f5f8 55%, #ebeff4 100%);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.start-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.start-card {
+  width: min(560px, 100%);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(26, 36, 49, 0.08);
+}
+
+.eyebrow {
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  margin-bottom: 0.8rem;
+}
+
+.start-card h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  margin-bottom: 0.7rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-bottom: 2rem;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.broadcast-bar {
+  background: #ffffff;
+  border-bottom-color: var(--line);
+}
+
+.broadcast-title {
+  color: #2a3543;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.broadcast-warning {
+  color: #fff;
+  background: var(--alert);
+  padding: 0.25rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 0.95rem;
+}
+
+.race-feed {
+  background: #ffffff;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.feed-header h2 {
+  font-size: 1rem;
+}
+
+.broadcast-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 0.7rem;
+}
+
+.mini-cam-column {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.mini-cam {
+  background: var(--feed-bg);
+  border: 1px solid var(--feed-line);
+  border-radius: 10px;
+  padding: 0.45rem;
+}
+
+.mini-cam h3 {
+  color: #68788b;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.35rem;
+}
+
+.mini-cam img {
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+  border: 1px solid var(--feed-line);
+}
+
+.main-feed {
+  background: var(--feed-bg);
+  border: 1px solid var(--feed-line);
+  border-radius: 10px;
+  padding: 0.45rem;
+  position: relative;
+}
+
+.main-feed img {
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+  border: 1px solid var(--feed-line);
+}
+
+.main-overlay {
+  position: absolute;
+  top: 0.95rem;
+  left: 0.95rem;
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.live-pill {
+  background: #ff3131;
+  color: #fff;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.session-label {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d3dce7;
+  color: #2f3d4e;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+}
+
+.hud-strip {
+  margin-top: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.hud-item {
+  background: #f7f9fc;
+  border: 1px solid #dbe3ed;
+  border-radius: 8px;
+  padding: 0.55rem;
+}
+
+.hud-label {
+  color: #6e8094;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hud-value {
+  color: #1a2838;
+  margin-top: 0.28rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.clean-panel {
+  background: #ffffff;
+}
+
+.panel-title-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+
+.panel-title-wrap h2 {
+  font-size: 1rem;
+}
+
+.timer-box {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+
+.timer {
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.8rem;
+}
+
+.timer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--text);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover {
+  border-color: #b7c2d0;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn.primary:hover {
+  filter: brightness(0.9);
+}
+
+.btn.ghost {
+  background: #ffffff;
+  color: #1f2d3d;
+  border-color: #cfd8e3;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.game-info {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem;
+  background: #fff;
+}
+
+.game-info h2 {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.game-info p {
+  color: #394656;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1100px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .broadcast-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-cam-column {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hud-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .broadcast-warning {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .mini-cam-column {
+    grid-template-columns: 1fr;
+  }
+
+  .top-bar {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .broadcast-title {
+    font-size: 0.72rem;
+  }
+}
