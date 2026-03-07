@@ -5,15 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Race Control - Start</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body>
+  <div class="track-bg" aria-hidden="true">
+    <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+      <g id="trackGroup">
+        <path id="trackOuter" class="track-line track-line-outer" d=""></path>
+        <path id="trackInner" class="track-line track-line-inner" d=""></path>
+        <path id="trackCore" class="track-line track-line-core" d=""></path>
+      </g>
+    </svg>
+  </div>
+
   <main class="start-page">
-    <section class="start-card">
-      <p class="eyebrow">Web Car Camera</p>
-      <h1>Race Control</h1>
-      <p class="subtitle">Monitor live camera feeds and control race timing from one dashboard.</p>
-      <a class="btn primary" href="index.html">Start</a>
+    <section class="start-showcase">
+      <model-viewer
+        class="start-logo-viewer"
+        src="model/F9G_logo_racing_3d.glb"
+        alt="F9G Racing logo"
+        auto-rotate
+        auto-rotate-delay="0"
+        rotation-per-second="24deg"
+        camera-controls
+        disable-pan
+        interaction-prompt="none"
+        exposure="1"
+        shadow-intensity="0"
+      ></model-viewer>
+      <a class="btn primary start-action" href="index.html">Start</a>
     </section>
   </main>
+  <script src="app.js"></script>
 </body>
 </html>

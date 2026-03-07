@@ -7,6 +7,16 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="track-bg" aria-hidden="true">
+    <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+      <g id="trackGroup">
+        <path id="trackOuter" class="track-line track-line-outer" d=""></path>
+        <path id="trackInner" class="track-line track-line-inner" d=""></path>
+        <path id="trackCore" class="track-line track-line-core" d=""></path>
+      </g>
+    </svg>
+  </div>
+
   <header class="top-bar broadcast-bar">
     <p class="broadcast-title">Remote Racing Cup 2026 - Live Control Feed</p>
     <p class="broadcast-warning">WARNING: Keep track clear and maintain safe operating distance.</p>
@@ -18,30 +28,48 @@
         <h2>Live Multi-Cam Feed</h2>
         <a class="btn ghost" href="start.html">Exit</a>
       </div>
+      <div class="camera-setup">
+        <p id="cameraStatus" class="setup-note">Cameras are off. Click Enable Cameras.</p>
+        <div class="setup-actions">
+          <button id="enableCamsBtn" class="btn primary" type="button">Enable Cameras</button>
+          <button id="stopCamsBtn" class="btn" type="button">Stop Cameras</button>
+        </div>
+      </div>
 
       <div class="broadcast-layout">
         <div class="mini-cam-column">
           <article class="mini-cam">
             <h3>Back Cam</h3>
-            <img src="http://192.168.1.198" alt="Back camera feed" />
+            <select id="backSelect" class="cam-select"></select>
+            <video id="backVideo" autoplay playsinline muted></video>
           </article>
 
           <article class="mini-cam">
             <h3>Front Cam</h3>
-            <img src="https://placehold.co/320x180/161b22/bac4cf?text=Front+Cam" alt="Front camera feed" />
+            <select id="frontSelect" class="cam-select"></select>
+            <video id="frontVideo" autoplay playsinline muted></video>
           </article>
 
           <article class="mini-cam">
             <h3>Top Cam</h3>
-            <img src="https://placehold.co/320x180/161b22/bac4cf?text=Top+Cam" alt="Top camera feed" />
+            <select id="topSelect" class="cam-select"></select>
+            <video id="topVideo" autoplay playsinline muted></video>
           </article>
         </div>
 
         <article class="main-feed">
-          <img src="https://placehold.co/1280x720/0e1116/b8c2cc?text=Main+Track+Camera" alt="Main track camera feed" />
+          <video id="mainVideo" autoplay playsinline muted></video>
           <div class="main-overlay">
             <span class="live-pill">LIVE</span>
             <span class="session-label">Session: Final Heat</span>
+          </div>
+          <div class="program-control">
+            <label for="programSelect">Program Source</label>
+            <select id="programSelect" class="cam-select">
+              <option value="back">Back Cam</option>
+              <option value="front">Front Cam</option>
+              <option value="top">Top Cam</option>
+            </select>
           </div>
         </article>
       </div>
