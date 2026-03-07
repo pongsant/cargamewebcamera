@@ -7,18 +7,10 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="track-bg" aria-hidden="true">
-    <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
-      <g id="trackGroup">
-        <path id="trackOuter" class="track-line track-line-outer" d=""></path>
-        <path id="trackInner" class="track-line track-line-inner" d=""></path>
-        <path id="trackCore" class="track-line track-line-core" d=""></path>
-      </g>
-    </svg>
-  </div>
+  <div id="bg-canvas" aria-hidden="true"></div>
 
   <header class="top-bar broadcast-bar">
-    <p class="broadcast-title">Remote Racing Cup 2026 - Live Control Feed</p>
+    <p class="broadcast-title"></p>
     <p class="broadcast-warning">WARNING: Keep track clear and maintain safe operating distance.</p>
   </header>
 
@@ -28,6 +20,7 @@
         <h2>Live Multi-Cam Feed</h2>
         <a class="btn ghost" href="start.html">Exit</a>
       </div>
+
       <div class="camera-setup">
         <p id="cameraStatus" class="setup-note">Cameras are off. Click Enable Cameras.</p>
         <div class="setup-actions">
@@ -140,13 +133,12 @@
       <div class="game-info">
         <h2>Game Brief</h2>
         <p>
-          All cars launch at the same time and race for a fixed number of laps. The lowest total race time wins.
-          Use the three camera feeds to monitor positions and use the timer controls to manage the session.
+          Timer starts when player drives over green line timer ends when player drives over red line going off track adds 5 seconds to your time
         </p>
       </div>
     </section>
   </main>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

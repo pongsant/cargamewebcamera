@@ -8,15 +8,7 @@
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body>
-  <div class="track-bg" aria-hidden="true">
-    <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
-      <g id="trackGroup">
-        <path id="trackOuter" class="track-line track-line-outer" d=""></path>
-        <path id="trackInner" class="track-line track-line-inner" d=""></path>
-        <path id="trackCore" class="track-line track-line-core" d=""></path>
-      </g>
-    </svg>
-  </div>
+  <div id="bg-canvas" aria-hidden="true"></div>
 
   <main class="start-page">
     <section class="start-showcase">
@@ -36,6 +28,7 @@
       <a class="btn primary start-action" href="index.html">Start</a>
     </section>
   </main>
-  <script src="app.js"></script>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>
