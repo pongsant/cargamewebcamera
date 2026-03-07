@@ -4,77 +4,84 @@ const mount = document.getElementById("bg-canvas");
 
 if (mount) {
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 300);
-  camera.position.set(0, 20, 42);
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 280);
+  camera.position.set(0, 20, 44);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    powerPreference: "high-performance",
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
   mount.appendChild(renderer.domElement);
 
-  const segments = window.innerWidth < 900 ? 110 : 150;
-  const terrainGeometry = new THREE.PlaneGeometry(150, 150, segments, segments);
-  terrainGeometry.rotateX(-Math.PI * 0.48);
+  const segX = window.innerWidth < 900 ? 92 : 128;
+  const segY = window.innerWidth < 900 ? 92 : 128;
 
-  const terrainMaterial = new THREE.MeshBasicMaterial({
-    color: 0x111111,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.2,
-  });
+  const makeTerrain = (opacity, y, z, scale, color) => {
+    const geometry = new THREE.PlaneGeometry(170, 170, segX, segY);
+    geometry.rotateX(-Math.PI * 0.488);
 
-  const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
-  terrain.position.set(0, -8, 0);
-  scene.add(terrain);
+    const material = new THREE.MeshBasicMaterial({
+      color,
+      wireframe: true,
+      transparent: true,
+      opacity,
+    });
 
-  const terrainBack = terrain.clone();
-  terrainBack.material = terrainMaterial.clone();
-  terrainBack.material.opacity = 0.08;
-  terrainBack.position.set(0, -11, -10);
-  terrainBack.scale.set(1.06, 1.06, 1.06);
-  scene.add(terrainBack);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(0, y, z);
+    mesh.scale.setScalar(scale);
+    scene.add(mesh);
 
-  const positions = terrainGeometry.attributes.position;
-  const source = new Float32Array(positions.array);
-  const sourceBack = new Float32Array(positions.array);
+    return {
+      mesh,
+      base: new Float32Array(geometry.attributes.position.array),
+      position: geometry.attributes.position,
+    };
+  };
+
+  const front = makeTerrain(0.12, -8, 0, 1, 0xffffff);
+  const back = makeTerrain(0.11, -11, -14, 1.1, 0x000000);
+
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let rafId = null;
 
-  function animate(t) {
-    const time = t * 0.00018;
+  const animate = (timeMs) => {
+    const t = timeMs * 0.00016;
 
     if (!reduceMotion) {
-      const arr = positions.array;
-      for (let i = 0; i < arr.length; i += 3) {
-        const x = source[i];
-        const z = source[i + 2];
-        const waveA = Math.sin((x * 0.24) + (time * 3.4)) * 2.3;
-        const waveB = Math.cos((z * 0.18) - (time * 2.6)) * 1.9;
-        const waveC = Math.sin(((x + z) * 0.14) + (time * 1.9)) * 1.35;
-        arr[i + 1] = source[i + 1] + waveA + waveB + waveC;
+      const f = front.position.array;
+      for (let i = 0; i < f.length; i += 3) {
+        const x = front.base[i];
+        const z = front.base[i + 2];
+        const w1 = Math.sin((x * 0.21) + (t * 3.0)) * 1.9;
+        const w2 = Math.cos((z * 0.16) - (t * 2.2)) * 1.5;
+        const w3 = Math.sin(((x + z) * 0.11) + (t * 1.4)) * 0.95;
+        f[i + 1] = front.base[i + 1] + w1 + w2 + w3;
       }
-      positions.needsUpdate = true;
+      front.position.needsUpdate = true;
 
-      const backArr = terrainBack.geometry.attributes.position.array;
-      for (let i = 0; i < backArr.length; i += 3) {
-        const x = sourceBack[i];
-        const z = sourceBack[i + 2];
-        const waveA = Math.sin((x * 0.2) + (time * 2.7) + 1.2) * 1.7;
-        const waveB = Math.cos((z * 0.16) - (time * 2.0) + 0.8) * 1.25;
-        backArr[i + 1] = sourceBack[i + 1] + waveA + waveB;
+      const b = back.position.array;
+      for (let i = 0; i < b.length; i += 3) {
+        const x = back.base[i];
+        const z = back.base[i + 2];
+        const w1 = Math.sin((x * 0.18) + (t * 2.4) + 0.9) * 1.2;
+        const w2 = Math.cos((z * 0.14) - (t * 1.7) + 0.4) * 1.0;
+        b[i + 1] = back.base[i + 1] + w1 + w2;
       }
-      terrainBack.geometry.attributes.position.needsUpdate = true;
+      back.position.needsUpdate = true;
 
-      camera.position.x = Math.sin(time * 0.62) * 3.5;
-      camera.position.y = 20 + Math.sin(time * 0.48) * 1.8;
-      camera.position.z = 42 + Math.cos(time * 0.36) * 1.4;
-      camera.lookAt(0, -4, 0);
+      camera.position.x = Math.sin(t * 0.53) * 3.1;
+      camera.position.y = 20 + Math.sin(t * 0.41) * 1.3;
+      camera.position.z = 44 + Math.cos(t * 0.29) * 1.1;
+      camera.lookAt(0, -4.2, 0);
     }
 
     renderer.render(scene, camera);
-    requestAnimationFrame(animate);
-  }
-
-  requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
+  };
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -82,6 +89,17 @@ if (mount) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    } else if (!document.hidden && !rafId) {
+      rafId = requestAnimationFrame(animate);
+    }
+  });
+
+  rafId = requestAnimationFrame(animate);
 }
 
 const timerEl = document.getElementById("timer");
@@ -98,7 +116,7 @@ const scoreStatus = document.getElementById("scoreStatus");
 if (timerEl && startBtn && stopBtn && resetBtn) {
   let startTime = 0;
   let elapsedBefore = 0;
-  let rafId = null;
+  let timerRafId = null;
   const players = [];
 
   const formatTime = (ms) => {
@@ -106,7 +124,6 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     const minutes = Math.floor(totalCentiseconds / 6000);
     const seconds = Math.floor((totalCentiseconds % 6000) / 100);
     const centiseconds = totalCentiseconds % 100;
-
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
   };
 
@@ -114,11 +131,11 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     const now = performance.now();
     const elapsed = elapsedBefore + (now - startTime);
     timerEl.textContent = formatTime(elapsed);
-    rafId = requestAnimationFrame(update);
+    timerRafId = requestAnimationFrame(update);
   };
 
   const getCurrentElapsed = () => {
-    if (rafId === null) return elapsedBefore;
+    if (timerRafId === null) return elapsedBefore;
     return elapsedBefore + (performance.now() - startTime);
   };
 
@@ -173,25 +190,25 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   const addPlayer = () => {
     if (!playerNameInput) return;
     const name = playerNameInput.value.trim();
+
     if (!name) {
       setScoreStatus("Please enter a player name.");
       return;
     }
 
-    const exists = players.some(
-      (player) => player.name.toLowerCase() === name.toLowerCase(),
-    );
+    const exists = players.some((player) => player.name.toLowerCase() === name.toLowerCase());
     if (exists) {
       setScoreStatus("Player name already exists.");
       return;
     }
 
-    const id =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random()}`;
+    const id = typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`;
+
     players.push({ id, name, bestMs: Number.POSITIVE_INFINITY });
     playerNameInput.value = "";
+
     renderPlayerOptions();
     renderScoreboard();
     playerSelect.value = id;
@@ -220,31 +237,30 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
       player.bestMs = currentMs;
       setScoreStatus(`Saved new best for ${player.name}: ${formatTime(currentMs)}`);
     } else {
-      setScoreStatus(
-        `${player.name} time ${formatTime(currentMs)} is slower than best ${formatTime(player.bestMs)}`,
-      );
+      setScoreStatus(`${player.name} time ${formatTime(currentMs)} is slower than best ${formatTime(player.bestMs)}`);
     }
+
     renderScoreboard();
   };
 
   startBtn.addEventListener("click", () => {
-    if (rafId !== null) return;
+    if (timerRafId !== null) return;
     startTime = performance.now();
-    rafId = requestAnimationFrame(update);
+    timerRafId = requestAnimationFrame(update);
   });
 
   stopBtn.addEventListener("click", () => {
-    if (rafId === null) return;
-    cancelAnimationFrame(rafId);
-    rafId = null;
+    if (timerRafId === null) return;
+    cancelAnimationFrame(timerRafId);
+    timerRafId = null;
     elapsedBefore += performance.now() - startTime;
     timerEl.textContent = formatTime(elapsedBefore);
   });
 
   resetBtn.addEventListener("click", () => {
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
+    if (timerRafId !== null) {
+      cancelAnimationFrame(timerRafId);
+      timerRafId = null;
     }
     startTime = 0;
     elapsedBefore = 0;
@@ -252,9 +268,11 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   });
 
   addPlayerBtn?.addEventListener("click", addPlayer);
+
   playerNameInput?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") addPlayer();
   });
+
   saveTimeBtn?.addEventListener("click", saveTimeForPlayer);
 
   renderPlayerOptions();
@@ -268,21 +286,9 @@ const programSelect = document.getElementById("programSelect");
 const mainVideo = document.getElementById("mainVideo");
 
 const slots = {
-  back: {
-    select: document.getElementById("backSelect"),
-    video: document.getElementById("backVideo"),
-    stream: null,
-  },
-  front: {
-    select: document.getElementById("frontSelect"),
-    video: document.getElementById("frontVideo"),
-    stream: null,
-  },
-  top: {
-    select: document.getElementById("topSelect"),
-    video: document.getElementById("topVideo"),
-    stream: null,
-  },
+  back: { select: document.getElementById("backSelect"), video: document.getElementById("backVideo"), stream: null },
+  front: { select: document.getElementById("frontSelect"), video: document.getElementById("frontVideo"), stream: null },
+  top: { select: document.getElementById("topSelect"), video: document.getElementById("topVideo"), stream: null },
 };
 
 const cameraSupported =
@@ -301,9 +307,8 @@ const stopStream = (stream) => {
 
 const refreshProgramFeed = () => {
   if (!mainVideo || !programSelect) return;
-  const slotKey = programSelect.value;
-  const selectedSlot = slots[slotKey];
-  mainVideo.srcObject = selectedSlot ? selectedSlot.stream : null;
+  const selected = slots[programSelect.value];
+  mainVideo.srcObject = selected ? selected.stream : null;
 };
 
 const listVideoDevices = async () => {
@@ -347,13 +352,11 @@ const applyDefaultSelections = () => {
     if (!select || !select.options.length || !select.options[0].value) return;
 
     let chosenIndex = 0;
-    while (
-      chosenIndex < select.options.length &&
-      used.has(select.options[chosenIndex].value)
-    ) {
+    while (chosenIndex < select.options.length && used.has(select.options[chosenIndex].value)) {
       chosenIndex += 1;
     }
     if (chosenIndex >= select.options.length) chosenIndex = 0;
+
     select.value = select.options[chosenIndex].value;
     used.add(select.value);
   });
@@ -366,14 +369,12 @@ const startSlot = async (slotKey) => {
   stopStream(slot.stream);
   slot.stream = null;
 
-  const sameSourceSlot = Object.entries(slots).find(([key, current]) => {
-    return (
-      key !== slotKey &&
-      current.select &&
-      current.select.value === slot.select.value &&
-      current.stream
-    );
-  });
+  const sameSourceSlot = Object.entries(slots).find(([key, current]) => (
+    key !== slotKey &&
+    current.select &&
+    current.select.value === slot.select.value &&
+    current.stream
+  ));
 
   if (sameSourceSlot) {
     slot.stream = sameSourceSlot[1].stream.clone();
@@ -398,6 +399,7 @@ const stopAllCameras = () => {
     slot.stream = null;
     if (slot.video) slot.video.srcObject = null;
   });
+
   if (mainVideo) mainVideo.srcObject = null;
   updateStatus("Cameras stopped.");
 };
@@ -410,22 +412,20 @@ const enableCameras = async () => {
 
   try {
     updateStatus("Requesting camera permission...");
-    const tempStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: false,
-    });
+
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     stopStream(tempStream);
 
     const devices = await listVideoDevices();
     fillSelectOptions(slots.back.select, devices);
     fillSelectOptions(slots.front.select, devices);
     fillSelectOptions(slots.top.select, devices);
-
     applyDefaultSelections();
 
     await startSlot("back");
     await startSlot("front");
     await startSlot("top");
+
     refreshProgramFeed();
     updateStatus("Cameras connected.");
   } catch (error) {
@@ -445,6 +445,7 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
 
   Object.entries(slots).forEach(([slotKey, slot]) => {
     if (!slot.select) return;
+
     slot.select.addEventListener("change", async () => {
       try {
         await startSlot(slotKey);
