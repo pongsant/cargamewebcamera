@@ -702,8 +702,8 @@ td {
 }
 
 .start-logo-viewer {
-  width: min(980px, 92vw);
-  min-height: min(70vh, 720px);
+  width: min(1470px, 92vw);
+  min-height: min(105vh, 1080px);
   border-radius: 18px;
   background: transparent;
   border: none;
