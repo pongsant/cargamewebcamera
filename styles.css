@@ -46,7 +46,7 @@ body {
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #ffe5e5 0%, #e84545 50%, #ffe2e2 100%);
+  background: linear-gradient(180deg, #fff0f0 0%, #ee6a6a 50%, #ffecec 100%);
   color: var(--text);
   font-family: "ShapiroLightFly", "Segoe UI", sans-serif;
   letter-spacing: 0.02em;
@@ -103,13 +103,18 @@ th,
   display: grid;
   gap: 0.18rem;
   align-items: start;
+  overflow: visible;
 }
 
 .top-logo-viewer {
-  width: clamp(120px, 11vw, 190px);
-  height: clamp(48px, 4.8vw, 78px);
+  width: clamp(150px, 13vw, 220px);
+  height: clamp(60px, 5.8vw, 90px);
+  display: block;
   border: none;
   background: transparent;
+  transform: scale(1.72);
+  transform-origin: left center;
+  margin-left: 0.8rem;
 }
 
 .eyebrow {
@@ -198,17 +203,19 @@ th,
 
 .camera-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  width: 60%;
-  margin: 0 auto;
+  grid-template-columns: clamp(170px, 18vw, 240px) minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: var(--space-1);
+  width: 100%;
+  margin: 0;
+  min-width: 0;
 }
 
 .camera-main-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(160px, 16vw, 220px);
   gap: var(--space-2);
-  align-items: start;
+  align-items: stretch;
 }
 
 .camera-card {
@@ -216,11 +223,45 @@ th,
 }
 
 .camera-card--program {
-  grid-column: 1 / -1;
+  grid-column: 2;
+  grid-row: 1 / 4;
 }
 
 .camera-card--program video {
-  aspect-ratio: 16 / 9.6;
+  aspect-ratio: 16 / 9.2;
+  min-height: 0;
+  height: auto;
+}
+
+.camera-grid > .camera-card:not(.camera-card--program) {
+  grid-column: 1;
+}
+
+.camera-grid > .camera-card:nth-child(2) {
+  grid-row: 1;
+}
+
+.camera-grid > .camera-card:nth-child(3) {
+  grid-row: 2;
+}
+
+.camera-grid > .camera-card:nth-child(4) {
+  grid-row: 3;
+}
+
+.camera-grid > .camera-card:not(.camera-card--program) .camera-head {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.camera-grid > .camera-card:not(.camera-card--program) .control-input {
+  max-width: 100%;
+}
+
+.camera-grid > .camera-card:not(.camera-card--program) video {
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  height: auto;
 }
 
 .camera-head {
@@ -321,8 +362,8 @@ th,
 
 .camera-timer-panel {
   padding: var(--space-1);
-  position: sticky;
-  top: var(--space-2);
+  position: static;
+  top: auto;
 }
 
 .camera-timer-panel .timer {
@@ -595,7 +636,37 @@ td {
 
   .camera-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+    gap: var(--space-2);
     width: 100%;
+  }
+
+  .camera-card--program {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .camera-card--program video {
+    aspect-ratio: 16 / 9.2;
+    min-height: 0;
+    height: auto;
+  }
+
+  .camera-grid > .camera-card:nth-child(2),
+  .camera-grid > .camera-card:nth-child(3),
+  .camera-grid > .camera-card:nth-child(4) {
+    grid-row: auto;
+  }
+
+  .camera-grid > .camera-card:not(.camera-card--program) .camera-head {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .camera-grid > .camera-card:not(.camera-card--program) video {
+    aspect-ratio: 16 / 9;
+    min-height: 0;
+    height: auto;
   }
 
   .camera-timer-panel {
