@@ -7,16 +7,12 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
-<body class="start-mode">
-  <div id="bg-canvas" aria-hidden="true"></div>
-  <div class="bg-grid" aria-hidden="true"></div>
-  <div class="bg-scanlines" aria-hidden="true"></div>
-  <div class="bg-noise" aria-hidden="true"></div>
-
-  <main class="start-stage start-minimal">
+  <body class="start-mode">
+  <main class="start-stage">
     <model-viewer
       class="start-logo-viewer"
       src="model/F9G_logo_racing_3d.glb"
+      style="--poster-color: transparent;"
       alt="F9G Racing logo"
       auto-rotate
       auto-rotate-delay="0"
@@ -29,9 +25,12 @@
       shadow-softness="0.8"
     ></model-viewer>
 
-    <a class="btn btn-enter" href="index.html">Start</a>
+    <a class="btn btn-enter" href="index.html" aria-label="Start race control">
+      <span class="start-btn-core">
+        <span>Engine</span>
+        <span>Start</span>
+      </span>
+    </a>
   </main>
-
-  <script type="module" src="app.js"></script>
 </body>
 </html>

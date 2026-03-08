@@ -1,105 +1,107 @@
-import * as THREE from "https://unpkg.com/three@0.164.1/build/three.module.js";
-
 const mount = document.getElementById("bg-canvas");
 
 if (mount) {
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 280);
-  camera.position.set(0, 20, 44);
+  import("https://unpkg.com/three@0.164.1/build/three.module.js").then((THREE) => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 280);
+    camera.position.set(0, 20, 44);
 
-  const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: true,
-    powerPreference: "high-performance",
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  mount.appendChild(renderer.domElement);
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    mount.appendChild(renderer.domElement);
 
-  const segX = window.innerWidth < 900 ? 92 : 128;
-  const segY = window.innerWidth < 900 ? 92 : 128;
+    const segX = window.innerWidth < 900 ? 92 : 128;
+    const segY = window.innerWidth < 900 ? 92 : 128;
 
-  const makeTerrain = (opacity, y, z, scale, color) => {
-    const geometry = new THREE.PlaneGeometry(170, 170, segX, segY);
-    geometry.rotateX(-Math.PI * 0.488);
+    const makeTerrain = (opacity, y, z, scale, color) => {
+      const geometry = new THREE.PlaneGeometry(170, 170, segX, segY);
+      geometry.rotateX(-Math.PI * 0.488);
 
-    const material = new THREE.MeshBasicMaterial({
-      color,
-      wireframe: true,
-      transparent: true,
-      opacity,
+      const material = new THREE.MeshBasicMaterial({
+        color,
+        wireframe: true,
+        transparent: true,
+        opacity,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(0, y, z);
+      mesh.scale.setScalar(scale);
+      scene.add(mesh);
+
+      return {
+        mesh,
+        base: new Float32Array(geometry.attributes.position.array),
+        position: geometry.attributes.position,
+      };
+    };
+
+    const front = makeTerrain(0.12, -8, 0, 1, 0xffffff);
+    const back = makeTerrain(0.11, -11, -14, 1.1, 0x000000);
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let rafId = null;
+
+    const animate = (timeMs) => {
+      const t = timeMs * 0.00016;
+
+      if (!reduceMotion) {
+        const f = front.position.array;
+        for (let i = 0; i < f.length; i += 3) {
+          const x = front.base[i];
+          const z = front.base[i + 2];
+          const w1 = Math.sin((x * 0.21) + (t * 3.0)) * 1.9;
+          const w2 = Math.cos((z * 0.16) - (t * 2.2)) * 1.5;
+          const w3 = Math.sin(((x + z) * 0.11) + (t * 1.4)) * 0.95;
+          f[i + 1] = front.base[i + 1] + w1 + w2 + w3;
+        }
+        front.position.needsUpdate = true;
+
+        const b = back.position.array;
+        for (let i = 0; i < b.length; i += 3) {
+          const x = back.base[i];
+          const z = back.base[i + 2];
+          const w1 = Math.sin((x * 0.18) + (t * 2.4) + 0.9) * 1.2;
+          const w2 = Math.cos((z * 0.14) - (t * 1.7) + 0.4) * 1.0;
+          b[i + 1] = back.base[i + 1] + w1 + w2;
+        }
+        back.position.needsUpdate = true;
+
+        camera.position.x = Math.sin(t * 0.53) * 3.1;
+        camera.position.y = 20 + Math.sin(t * 0.41) * 1.3;
+        camera.position.z = 44 + Math.cos(t * 0.29) * 1.1;
+        camera.lookAt(0, -4.2, 0);
+      }
+
+      renderer.render(scene, camera);
+      rafId = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(0, y, z);
-    mesh.scale.setScalar(scale);
-    scene.add(mesh);
-
-    return {
-      mesh,
-      base: new Float32Array(geometry.attributes.position.array),
-      position: geometry.attributes.position,
-    };
-  };
-
-  const front = makeTerrain(0.12, -8, 0, 1, 0xffffff);
-  const back = makeTerrain(0.11, -11, -14, 1.1, 0x000000);
-
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let rafId = null;
-
-  const animate = (timeMs) => {
-    const t = timeMs * 0.00016;
-
-    if (!reduceMotion) {
-      const f = front.position.array;
-      for (let i = 0; i < f.length; i += 3) {
-        const x = front.base[i];
-        const z = front.base[i + 2];
-        const w1 = Math.sin((x * 0.21) + (t * 3.0)) * 1.9;
-        const w2 = Math.cos((z * 0.16) - (t * 2.2)) * 1.5;
-        const w3 = Math.sin(((x + z) * 0.11) + (t * 1.4)) * 0.95;
-        f[i + 1] = front.base[i + 1] + w1 + w2 + w3;
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      } else if (!document.hidden && !rafId) {
+        rafId = requestAnimationFrame(animate);
       }
-      front.position.needsUpdate = true;
+    });
 
-      const b = back.position.array;
-      for (let i = 0; i < b.length; i += 3) {
-        const x = back.base[i];
-        const z = back.base[i + 2];
-        const w1 = Math.sin((x * 0.18) + (t * 2.4) + 0.9) * 1.2;
-        const w2 = Math.cos((z * 0.14) - (t * 1.7) + 0.4) * 1.0;
-        b[i + 1] = back.base[i + 1] + w1 + w2;
-      }
-      back.position.needsUpdate = true;
-
-      camera.position.x = Math.sin(t * 0.53) * 3.1;
-      camera.position.y = 20 + Math.sin(t * 0.41) * 1.3;
-      camera.position.z = 44 + Math.cos(t * 0.29) * 1.1;
-      camera.lookAt(0, -4.2, 0);
-    }
-
-    renderer.render(scene, camera);
     rafId = requestAnimationFrame(animate);
-  };
-
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  }).catch((error) => {
+    console.error("Failed to load Three.js background:", error);
   });
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden && rafId) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
-    } else if (!document.hidden && !rafId) {
-      rafId = requestAnimationFrame(animate);
-    }
-  });
-
-  rafId = requestAnimationFrame(animate);
 }
 
 const timerEl = document.getElementById("timer");
