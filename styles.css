@@ -392,6 +392,8 @@ th,
 .scoreboard-bottom {
   margin-top: var(--space-2);
   margin-bottom: var(--space-3);
+  background: #ffffff;
+  border-color: #d5d5d5;
 }
 
 .timer {
@@ -442,6 +444,85 @@ th {
 
 td {
   color: #222222;
+}
+
+.scoreboard-bottom .module-head h2 {
+  color: #171717;
+  letter-spacing: 0.14em;
+}
+
+.scoreboard-bottom .table-panel {
+  background: #ffffff;
+  border-color: #d7d7d7;
+  padding: clamp(0.28rem, 0.45vw, 0.52rem);
+}
+
+.scoreboard-bottom table {
+  border-collapse: separate;
+  border-spacing: 0 clamp(0.18rem, 0.3vw, 0.34rem);
+}
+
+.scoreboard-bottom thead th {
+  color: #1f1f1f;
+  font-weight: 900;
+  font-size: clamp(0.84rem, 0.7vw, 1.05rem);
+  border-bottom: 0;
+  padding: 0.5rem 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.scoreboard-bottom tbody tr {
+  outline: 1px solid #dddddd;
+  border-radius: 9px;
+}
+
+.scoreboard-bottom tbody tr:nth-child(odd) { background: #f7f7f7; }
+.scoreboard-bottom tbody tr:nth-child(even) { background: #efefef; }
+
+.scoreboard-bottom td {
+  border-bottom: 0;
+  color: #111111;
+  font-weight: 900;
+  padding: clamp(0.56rem, 0.76vw, 0.86rem) 0.65rem;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+.scoreboard-bottom td:first-child {
+  width: 17%;
+  text-align: center;
+  font-size: clamp(1.2rem, 1.46vw, 1.74rem);
+  background: #e9e9e9;
+  color: #111111;
+  border-radius: 9px 0 0 9px;
+}
+
+.scoreboard-bottom td:nth-child(2) {
+  width: 53%;
+  letter-spacing: 0.04em;
+  font-size: clamp(1.08rem, 1.24vw, 1.5rem);
+}
+
+.scoreboard-bottom td:nth-child(3) {
+  width: 30%;
+  text-align: center;
+  color: #111111;
+  background: #e3e3e3;
+  border-radius: 8px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  font-size: clamp(1.02rem, 1.14vw, 1.34rem);
+  text-shadow: none;
+}
+
+.scoreboard-bottom .score-controls {
+  background: #ffffff;
+  border-color: #d7d7d7;
+}
+
+.scoreboard-bottom .score-controls label {
+  color: #1f1f1f;
 }
 
 .control-input {
