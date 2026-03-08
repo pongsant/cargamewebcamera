@@ -1,3 +1,16 @@
+const START_GATE_KEY = "raceControlStarted";
+const exitBtn = document.getElementById("exitBtn");
+
+if (exitBtn) {
+  exitBtn.addEventListener("click", () => {
+    try {
+      sessionStorage.removeItem(START_GATE_KEY);
+    } catch (error) {
+      // Ignore storage errors and continue to start page.
+    }
+  });
+}
+
 const mount = document.getElementById("bg-canvas");
 
 if (mount) {

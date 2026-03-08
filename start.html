@@ -25,12 +25,32 @@
       shadow-softness="0.8"
     ></model-viewer>
 
-    <a class="btn btn-enter" href="index.html" aria-label="Start race control">
+    <a id="startEntryBtn" class="btn btn-enter" href="index.html" aria-label="Start race control">
       <span class="start-btn-core">
         <span>Engine</span>
         <span>Start</span>
       </span>
     </a>
   </main>
+  <script>
+    (() => {
+      const START_GATE_KEY = "raceControlStarted";
+      const startEntryBtn = document.getElementById("startEntryBtn");
+
+      if (!startEntryBtn) return;
+
+      startEntryBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+
+        try {
+          sessionStorage.setItem(START_GATE_KEY, "true");
+        } catch (error) {
+          // Continue navigation even when sessionStorage is unavailable.
+        }
+
+        window.location.href = "index.html";
+      });
+    })();
+  </script>
 </body>
 </html>

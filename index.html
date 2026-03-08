@@ -4,6 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Race Control - Live Dashboard</title>
+  <script>
+    (() => {
+      const START_GATE_KEY = "raceControlStarted";
+      let canEnterDashboard = false;
+
+      try {
+        canEnterDashboard = sessionStorage.getItem(START_GATE_KEY) === "true";
+      } catch (error) {
+        canEnterDashboard = false;
+      }
+
+      if (!canEnterDashboard) {
+        window.location.replace("start.html");
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
@@ -25,7 +41,7 @@
     </div>
     <div class="top-status-wrap">
       <p class="live-state">Live Session</p>
-      <a class="btn btn-ghost" href="start.html">Exit</a>
+      <a id="exitBtn" class="btn btn-ghost" href="start.html">Exit</a>
     </div>
   </header>
 
