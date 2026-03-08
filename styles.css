@@ -87,8 +87,9 @@ th,
 }
 
 .top-bar {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
@@ -100,21 +101,25 @@ th,
 }
 
 .top-title-wrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: grid;
   gap: 0.18rem;
-  align-items: start;
+  align-items: center;
+  justify-items: center;
   overflow: visible;
 }
 
 .top-logo-viewer {
-  width: clamp(150px, 13vw, 220px);
-  height: clamp(60px, 5.8vw, 90px);
+  width: clamp(290px, 22vw, 400px);
+  height: clamp(118px, 9.5vw, 168px);
   display: block;
   border: none;
   background: transparent;
-  transform: scale(1.72);
-  transform-origin: left center;
-  margin-left: 0.8rem;
+  transform: none;
+  transform-origin: center center;
+  margin-left: 0;
 }
 
 .eyebrow {
@@ -781,6 +786,13 @@ td {
   .top-bar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .top-title-wrap {
+    position: static;
+    left: auto;
+    transform: none;
+    justify-items: flex-start;
   }
 
   .camera-setup {
