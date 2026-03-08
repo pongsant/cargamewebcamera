@@ -5,12 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Race Control - Live Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body class="dashboard-mode">
   <header class="top-bar">
     <div class="top-title-wrap">
-      <h1 class="bar-title">Race Control</h1>
-      <p class="eyebrow">Minimal Monitoring Dashboard</p>
+      <model-viewer
+        class="top-logo-viewer"
+        src="model/F9G_logo_racing_3d.glb"
+        alt="F9G Racing logo"
+        auto-rotate
+        auto-rotate-delay="0"
+        rotation-per-second="20deg"
+        camera-controls
+        disable-pan
+        interaction-prompt="none"
+        style="--poster-color: transparent;"
+      ></model-viewer>
+      
     </div>
     <div class="top-status-wrap">
       <p class="live-state">Live Session</p>
@@ -32,46 +44,69 @@
         </div>
       </div>
 
-      <div class="camera-grid">
-        <article class="camera-card panel-lite camera-card--program">
-          <div class="camera-head">
-            <h3>Main Program</h3>
-            <span class="live-pill">Live</span>
-          </div>
-          <video id="mainVideo" autoplay playsinline muted></video>
-          <div class="program-control">
-            <label for="programSelect">Program Source</label>
-            <select id="programSelect" class="control-input">
-              <option value="back">Back Cam</option>
-              <option value="front">Front Cam</option>
-              <option value="top">Top Cam</option>
-            </select>
-          </div>
-        </article>
+      <div class="camera-main-row">
+        <div class="camera-grid">
+          <article class="camera-card panel-lite camera-card--program">
+            <div class="camera-head">
+              <h3>Main Program</h3>
+              <span class="live-pill">Live</span>
+            </div>
+            <video id="mainVideo" autoplay playsinline muted></video>
+            <div class="program-control">
+              <label for="programSelect">Program Source</label>
+              <select id="programSelect" class="control-input">
+                <option value="back">Back Cam</option>
+                <option value="front">Front Cam</option>
+                <option value="top">Top Cam</option>
+              </select>
+            </div>
+          </article>
 
-        <article class="camera-card panel-lite">
-          <div class="camera-head">
-            <h3>Back Cam</h3>
-            <select id="backSelect" class="control-input"></select>
-          </div>
-          <video id="backVideo" autoplay playsinline muted></video>
-        </article>
+          <article class="camera-card panel-lite">
+            <div class="camera-head">
+              <h3>Back Cam</h3>
+              <select id="backSelect" class="control-input"></select>
+            </div>
+            <video id="backVideo" autoplay playsinline muted></video>
+          </article>
 
-        <article class="camera-card panel-lite">
-          <div class="camera-head">
-            <h3>Front Cam</h3>
-            <select id="frontSelect" class="control-input"></select>
-          </div>
-          <video id="frontVideo" autoplay playsinline muted></video>
-        </article>
+          <article class="camera-card panel-lite">
+            <div class="camera-head">
+              <h3>Front Cam</h3>
+              <select id="frontSelect" class="control-input"></select>
+            </div>
+            <video id="frontVideo" autoplay playsinline muted></video>
+          </article>
 
-        <article class="camera-card panel-lite">
-          <div class="camera-head">
-            <h3>Top Cam</h3>
-            <select id="topSelect" class="control-input"></select>
+          <article class="camera-card panel-lite">
+            <div class="camera-head">
+              <h3>Top Cam</h3>
+              <select id="topSelect" class="control-input"></select>
+            </div>
+            <video id="topVideo" autoplay playsinline muted></video>
+          </article>
+        </div>
+
+        <section class="panel-lite camera-timer-panel">
+          <div class="module-head">
+            <h2>Timer Control</h2>
           </div>
-          <video id="topVideo" autoplay playsinline muted></video>
-        </article>
+          <p id="timer" class="timer">00:00.00</p>
+          <div class="timer-actions timer-actions-vertical">
+            <button id="startBtn" class="btn btn-accent" type="button">Start</button>
+            <button id="stopBtn" class="btn" type="button">Stop</button>
+            <button id="resetBtn" class="btn" type="button">Reset</button>
+          </div>
+          <div class="briefing-inline">
+            <div class="module-head">
+              <h2>System Briefing</h2>
+            </div>
+            <p class="setup-note">
+              All cars launch simultaneously and race for fixed laps. Lowest total time wins.
+              Monitor all camera feeds and use timer controls to coordinate race operations.
+            </p>
+          </div>
+        </section>
       </div>
 
       <div class="hud-grid">
@@ -89,65 +124,38 @@
         </div>
       </div>
     </section>
-
-    <aside class="command-module">
-      <section class="panel-shell panel-block">
-        <div class="module-head">
-          <h2>Timer Control</h2>
-        </div>
-        <p id="timer" class="timer">00:00.00</p>
-        <div class="timer-actions">
-          <button id="startBtn" class="btn btn-accent" type="button">Start</button>
-          <button id="stopBtn" class="btn" type="button">Stop</button>
-          <button id="resetBtn" class="btn" type="button">Reset</button>
-        </div>
-      </section>
-
-      <section class="panel-shell panel-block">
-        <div class="module-head">
-          <h2>Scoreboard</h2>
-        </div>
-
-        <div class="table-panel panel-lite">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Driver</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody id="scoreboardBody"></tbody>
-          </table>
-        </div>
-
-        <div class="score-controls panel-lite">
-          <label for="playerNameInput">Add Player</label>
-          <div class="score-row">
-            <input id="playerNameInput" class="control-input" type="text" placeholder="Player name" />
-            <button id="addPlayerBtn" class="btn" type="button">Add</button>
-          </div>
-
-          <label for="playerSelect">Save Time To</label>
-          <div class="score-row">
-            <select id="playerSelect" class="control-input"></select>
-            <button id="saveTimeBtn" class="btn btn-accent" type="button">Save Time</button>
-          </div>
-          <p id="scoreStatus" class="setup-note">Add a player to start recording scores.</p>
-        </div>
-      </section>
-
-      <section class="panel-shell panel-block briefing-panel">
-        <div class="module-head">
-          <h2>System Briefing</h2>
-        </div>
-        <p>
-          All cars launch simultaneously and race for fixed laps. Lowest total time wins.
-          Monitor all camera feeds and use timer controls to coordinate race operations.
-        </p>
-      </section>
-    </aside>
   </main>
+
+  <section class="scoreboard-bottom panel-shell">
+    <div class="module-head">
+      <h2>Scoreboard</h2>
+    </div>
+    <div class="table-panel panel-lite">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Driver</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="scoreboardBody"></tbody>
+      </table>
+    </div>
+    <div class="score-controls panel-lite">
+      <label for="playerNameInput">Add Player</label>
+      <div class="score-row">
+        <input id="playerNameInput" class="control-input" type="text" placeholder="Player name" />
+        <button id="addPlayerBtn" class="btn" type="button">Add</button>
+      </div>
+      <label for="playerSelect">Save Time To</label>
+      <div class="score-row">
+        <select id="playerSelect" class="control-input"></select>
+        <button id="saveTimeBtn" class="btn btn-accent" type="button">Save Time</button>
+      </div>
+      <p id="scoreStatus" class="setup-note">Add a player to start recording scores.</p>
+    </div>
+  </section>
 
   <script type="module" src="app.js"></script>
 </body>
