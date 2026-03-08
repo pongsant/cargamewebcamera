@@ -22,6 +22,14 @@
   --text: #111111;
   --muted: #555555;
   --shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
+  --space-1: clamp(0.45rem, 0.6vw, 0.75rem);
+  --space-2: clamp(0.7rem, 0.9vw, 1.1rem);
+  --space-3: clamp(1rem, 1.4vw, 1.8rem);
+  --radius-1: clamp(10px, 0.8vw, 14px);
+  --radius-2: clamp(14px, 1.2vw, 20px);
+  --text-sm: clamp(0.76rem, 0.55vw, 0.92rem);
+  --text-md: clamp(0.86rem, 0.7vw, 1.02rem);
+  --text-lg: clamp(1rem, 1.1vw, 1.35rem);
 }
 
 * {
@@ -70,7 +78,7 @@ th,
 .top-bar,
 .dashboard-layout,
 .start-stage {
-  width: min(1400px, calc(100% - 2rem));
+  width: min(1800px, calc(100% - clamp(1rem, 2.2vw, 2.6rem)));
   margin: 0 auto;
 }
 
@@ -78,19 +86,19 @@ th,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
 }
 
 .bar-title {
-  font-size: clamp(1.45rem, 2vw, 2rem);
+  font-size: clamp(1.45rem, 2.1vw, 2.5rem);
   letter-spacing: 0.07em;
 }
 
 .eyebrow {
   margin-top: 0.2rem;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--text-sm);
   letter-spacing: 0.13em;
 }
 
@@ -103,15 +111,15 @@ th,
 .live-state {
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  padding: 0.45rem 0.8rem;
-  font-size: 0.72rem;
+  padding: clamp(0.42rem, 0.6vw, 0.65rem) clamp(0.75rem, 1vw, 1.05rem);
+  font-size: var(--text-sm);
 }
 
 .dashboard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.8fr);
-  gap: 1rem;
-  padding: 0 0 1.2rem;
+  gap: var(--space-2);
+  padding: 0 0 var(--space-3);
 }
 
 .panel-shell,
@@ -123,29 +131,29 @@ th,
 
 .panel-shell {
   background: var(--surface);
-  border-radius: 18px;
+  border-radius: var(--radius-2);
   box-shadow: var(--shadow);
-  padding: 1rem;
+  padding: var(--space-2);
 }
 
 .panel-lite {
   background: #fbfbfb;
-  border-radius: 14px;
+  border-radius: var(--radius-1);
 }
 
 .module-head {
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-1);
 }
 
 .module-head h2 {
-  font-size: 0.9rem;
+  font-size: var(--text-md);
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .camera-setup {
-  padding: 0.75rem;
-  margin-bottom: 0.8rem;
+  padding: var(--space-1);
+  margin-bottom: var(--space-2);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -156,30 +164,30 @@ th,
 .setup-note,
 .briefing-panel p {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
 
 .camera-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(min(100%, 420px), 1fr));
+  gap: var(--space-2);
 }
 
 .camera-card {
-  padding: 0.6rem;
+  padding: var(--space-1);
 }
 
 .camera-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.45rem;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
 }
 
 .camera-head h3 {
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -191,7 +199,7 @@ th,
   object-fit: cover;
   background: #e9e9e9;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: calc(var(--radius-1) - 2px);
 }
 
 .camera-card .control-input {
@@ -206,7 +214,7 @@ th,
 .score-controls label,
 .hud-label {
   display: block;
-  font-size: 0.67rem;
+  font-size: clamp(0.64rem, 0.5vw, 0.8rem);
   margin-bottom: 0.22rem;
   text-transform: uppercase;
   color: var(--muted);
@@ -215,31 +223,31 @@ th,
 .live-pill {
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.62rem;
+  padding: clamp(0.18rem, 0.3vw, 0.3rem) clamp(0.5rem, 0.6vw, 0.72rem);
+  font-size: clamp(0.6rem, 0.5vw, 0.78rem);
   text-transform: uppercase;
 }
 
 .hud-grid {
-  margin-top: 0.8rem;
+  margin-top: var(--space-2);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6rem;
+  gap: var(--space-1);
 }
 
 .hud-item {
-  padding: 0.7rem;
+  padding: var(--space-1);
 }
 
 .hud-value {
-  margin-top: 0.25rem;
-  font-size: 1rem;
+  margin-top: 0.22rem;
+  font-size: var(--text-lg);
 }
 
 .command-module {
   display: grid;
   grid-template-rows: auto auto auto;
-  gap: 0.8rem;
+  gap: var(--space-2);
 }
 
 .timer {
@@ -249,30 +257,30 @@ th,
 
 .table-panel,
 .score-controls {
-  padding: 0.7rem;
+  padding: var(--space-1);
 }
 
 .table-panel {
-  margin-bottom: 0.65rem;
+  margin-bottom: var(--space-1);
 }
 
 .score-controls {
   display: grid;
-  gap: 0.4rem;
+  gap: clamp(0.35rem, 0.5vw, 0.6rem);
 }
 
 .score-row,
 .timer-actions,
 .setup-actions {
   display: flex;
-  gap: 0.45rem;
+  gap: var(--space-1);
   flex-wrap: wrap;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: var(--text-md);
 }
 
 th,
@@ -290,21 +298,21 @@ th {
   width: 100%;
   background: #ffffff;
   color: var(--text);
-  padding: 0.45rem 0.5rem;
+  padding: clamp(0.42rem, 0.6vw, 0.66rem) clamp(0.5rem, 0.7vw, 0.72rem);
   font-family: "ShapiroLightFly", "Segoe UI", sans-serif;
-  font-size: 0.82rem;
-  border-radius: 10px;
+  font-size: var(--text-sm);
+  border-radius: calc(var(--radius-1) - 2px);
 }
 
 .btn {
   background: #ffffff;
   color: var(--text);
   text-decoration: none;
-  padding: 0.56rem 0.95rem;
-  font-size: 0.8rem;
+  padding: clamp(0.48rem, 0.7vw, 0.72rem) clamp(0.8rem, 1vw, 1.2rem);
+  font-size: var(--text-sm);
   letter-spacing: 0.08em;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: calc(var(--radius-1) - 2px);
   text-transform: uppercase;
   transition: background-color 0.18s ease, border-color 0.18s ease;
 }
@@ -452,14 +460,14 @@ th {
   justify-items: center;
   align-content: center;
   grid-template-rows: auto auto;
-  gap: 0.25rem;
+  gap: clamp(0.2rem, 0.45vw, 0.5rem);
   padding: 0;
   transform: translateY(-2.5vh);
 }
 
 .start-logo-viewer {
-  width: min(760px, 92vw);
-  min-height: min(68vh, 620px);
+  width: min(980px, 92vw);
+  min-height: min(70vh, 720px);
   border-radius: 18px;
   background: transparent;
   border: none;
@@ -506,5 +514,19 @@ th {
   .top-bar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .camera-setup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .camera-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .camera-card .control-input {
+    max-width: 100%;
   }
 }
