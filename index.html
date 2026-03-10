@@ -63,34 +63,22 @@
         <div class="camera-grid">
           <article class="camera-card panel-lite camera-card--program">
             <div class="camera-head">
-              <h3>Main Program</h3>
+              <h3>FaceTime Main Camera</h3>
               <span class="live-pill">Live</span>
             </div>
             <video id="mainVideo" autoplay playsinline muted></video>
             <div class="program-control">
+              <label for="frontSelect">FaceTime Source</label>
+              <select id="frontSelect" class="control-input"></select>
+            </div>
+            <div class="program-control">
               <label for="programSelect">Program Source</label>
               <select id="programSelect" class="control-input">
-                <option value="back">Back Cam</option>
-                <option value="front">Front Cam</option>
+                <option value="front">FaceTime Main Camera</option>
                 <option value="top">Top Cam</option>
               </select>
             </div>
-          </article>
-
-          <article class="camera-card panel-lite">
-            <div class="camera-head">
-              <h3>Back Cam</h3>
-              <select id="backSelect" class="control-input"></select>
-            </div>
-            <video id="backVideo" autoplay playsinline muted></video>
-          </article>
-
-          <article class="camera-card panel-lite">
-            <div class="camera-head">
-              <h3>Front Cam</h3>
-              <select id="frontSelect" class="control-input"></select>
-            </div>
-            <video id="frontVideo" autoplay playsinline muted></video>
+            <video id="frontVideo" autoplay playsinline muted hidden></video>
           </article>
 
           <article class="camera-card panel-lite">
