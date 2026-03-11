@@ -310,10 +310,6 @@ const cameraSupported =
   Boolean(navigator.mediaDevices) &&
   typeof navigator.mediaDevices.getUserMedia === "function" &&
   typeof navigator.mediaDevices.enumerateDevices === "function";
-const screenShareSupported =
-  Boolean(navigator.mediaDevices) &&
-  typeof navigator.mediaDevices.getDisplayMedia === "function";
-const SCREEN_SOURCE_ID = "__screen_share__";
 
 const updateStatus = (message) => {
   if (cameraStatus) cameraStatus.textContent = message;
@@ -340,13 +336,6 @@ const fillSelectOptions = (select, devices) => {
   const previous = select.value;
   select.innerHTML = "";
 
-  if (screenShareSupported) {
-    const screenOption = document.createElement("option");
-    screenOption.value = SCREEN_SOURCE_ID;
-    screenOption.textContent = "Screen / Window (FaceTime)";
-    select.appendChild(screenOption);
-  }
-
   devices.forEach((device, index) => {
     const option = document.createElement("option");
     option.value = device.deviceId;
@@ -372,7 +361,6 @@ const fillSelectOptions = (select, devices) => {
 const FRONT_LABEL_HINTS = [
   "iphone",
   "front",
-  "facetime",
   "continuity",
   "ios",
   "phone",
@@ -397,7 +385,6 @@ const getPreferenceScore = (slotKey, label) => {
     FRONT_LABEL_HINTS.forEach((hint) => {
       if (normalized.includes(hint)) score += 2;
     });
-    if (normalized.includes("facetime hd")) score -= 2;
     if (normalized.includes("built-in") || normalized.includes("builtin")) score -= 2;
     if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
     if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
@@ -423,7 +410,7 @@ const findBestOptionIndex = (select, slotKey, used) => {
   for (let i = 0; i < select.options.length; i += 1) {
     const option = select.options[i];
     const value = option.value;
-    if (!value || value === SCREEN_SOURCE_ID || used.has(value)) continue;
+    if (!value || used.has(value)) continue;
 
     const score = getPreferenceScore(slotKey, option.textContent);
     if (score > bestScore) {
@@ -446,7 +433,6 @@ const applyDefaultSelections = () => {
     const currentValue = select.value;
     if (
       currentValue &&
-      currentValue !== SCREEN_SOURCE_ID &&
       Array.from(select.options).some((option) => option.value === currentValue)
     ) {
       used.add(currentValue);
@@ -492,38 +478,10 @@ const startSlot = async (slotKey) => {
     return;
   }
 
-  let stream = null;
-
-  if (slot.select.value === SCREEN_SOURCE_ID) {
-    if (!screenShareSupported) {
-      throw new Error("Screen sharing is not supported in this browser.");
-    }
-
-    stream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: false,
-    });
-
-    const [videoTrack] = stream.getVideoTracks();
-    if (videoTrack) {
-      videoTrack.addEventListener("ended", () => {
-        Object.values(slots).forEach((currentSlot) => {
-          if (currentSlot.select?.value === SCREEN_SOURCE_ID) {
-            stopStream(currentSlot.stream);
-            currentSlot.stream = null;
-            if (currentSlot.video) currentSlot.video.srcObject = null;
-          }
-        });
-        refreshProgramFeed();
-        updateStatus("Screen share ended. Choose Screen / Window again to resume.");
-      }, { once: true });
-    }
-  } else {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: slot.select.value } },
-      audio: false,
-    });
-  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { deviceId: { exact: slot.select.value } },
+    audio: false,
+  });
 
   slot.stream = stream;
   slot.video.srcObject = stream;
@@ -548,13 +506,13 @@ const enableCameras = async () => {
   }
 
   try {
-    updateStatus("Preparing camera and screen sources...");
+    updateStatus("Preparing camera sources...");
 
     try {
       const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       stopStream(tempStream);
     } catch (permissionError) {
-      // Continue with available sources (for example, screen share only).
+      // Continue with available sources.
     }
 
     const devices = await listVideoDevices();
@@ -573,9 +531,7 @@ const enableCameras = async () => {
 
     refreshProgramFeed();
     if (successCount > 0) {
-      updateStatus("Sources connected. Select Screen / Window to show a FaceTime call.");
-    } else if (screenShareSupported) {
-      updateStatus("No camera started. Pick Screen / Window to stream your FaceTime call.");
+      updateStatus("Camera sources connected.");
     } else {
       updateStatus("No camera sources available. Check permissions and connected devices.");
     }
@@ -601,17 +557,9 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
       try {
         await startSlot(slotKey);
         refreshProgramFeed();
-        updateStatus(
-          slot.select.value === SCREEN_SOURCE_ID
-            ? "Choose your FaceTime window in the share prompt."
-            : "Camera source updated."
-        );
+        updateStatus("Camera source updated.");
       } catch (error) {
-        updateStatus(
-          slot.select.value === SCREEN_SOURCE_ID
-            ? "Screen share was canceled or blocked."
-            : "Failed to switch camera source."
-        );
+        updateStatus("Failed to switch camera source.");
         console.error(error);
       }
     });
