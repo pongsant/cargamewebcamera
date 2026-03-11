@@ -278,8 +278,9 @@ th,
   display: block;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  transform: none !important;
-  -webkit-transform: none !important;
+  transform: scaleX(-1) !important;
+  -webkit-transform: scaleX(-1) !important;
+  filter: contrast(1.24) saturate(1.08) brightness(0.98);
   background: #e9e9e9;
   border: 1px solid var(--line);
   border-radius: calc(var(--radius-1) - 2px);
