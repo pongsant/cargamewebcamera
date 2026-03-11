@@ -372,6 +372,7 @@ const fillSelectOptions = (select, devices) => {
 const FRONT_LABEL_HINTS = [
   "iphone",
   "front",
+  "facetime",
   "continuity",
   "ios",
   "phone",
@@ -396,9 +397,9 @@ const getPreferenceScore = (slotKey, label) => {
     FRONT_LABEL_HINTS.forEach((hint) => {
       if (normalized.includes(hint)) score += 2;
     });
-    if (normalized.includes("facetime hd")) score -= 8;
-    if (normalized.includes("built-in") || normalized.includes("builtin")) score -= 7;
-    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 6;
+    if (normalized.includes("facetime hd")) score -= 2;
+    if (normalized.includes("built-in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
     if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
     return score;
   }
@@ -441,6 +442,16 @@ const applyDefaultSelections = () => {
   keys.forEach((key) => {
     const select = slots[key].select;
     if (!select || !select.options.length || !select.options[0].value) return;
+
+    const currentValue = select.value;
+    if (
+      currentValue &&
+      currentValue !== SCREEN_SOURCE_ID &&
+      Array.from(select.options).some((option) => option.value === currentValue)
+    ) {
+      used.add(currentValue);
+      return;
+    }
 
     let chosenIndex = findBestOptionIndex(select, key, used);
 
