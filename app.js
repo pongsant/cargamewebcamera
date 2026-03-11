@@ -369,22 +369,80 @@ const fillSelectOptions = (select, devices) => {
   }
 };
 
+const FRONT_LABEL_HINTS = [
+  "iphone",
+  "front",
+  "continuity",
+  "ios",
+  "phone",
+];
+
+const TOP_LABEL_HINTS = [
+  "logitech",
+  "webcam",
+  "usb",
+  "brio",
+  "c920",
+  "c922",
+  "c930",
+];
+
+const getPreferenceScore = (slotKey, label) => {
+  const normalized = (label || "").toLowerCase();
+  if (!normalized) return 0;
+
+  if (slotKey === "front") {
+    let score = 0;
+    FRONT_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 2;
+    });
+    if (normalized.includes("facetime hd")) score -= 8;
+    if (normalized.includes("built-in") || normalized.includes("builtin")) score -= 7;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 6;
+    if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
+    return score;
+  }
+
+  if (slotKey === "top") {
+    let score = 0;
+    TOP_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 3;
+    });
+    if (normalized.includes("iphone")) score -= 1;
+    return score;
+  }
+
+  return 0;
+};
+
+const findBestOptionIndex = (select, slotKey, used) => {
+  let bestIndex = -1;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (let i = 0; i < select.options.length; i += 1) {
+    const option = select.options[i];
+    const value = option.value;
+    if (!value || value === SCREEN_SOURCE_ID || used.has(value)) continue;
+
+    const score = getPreferenceScore(slotKey, option.textContent);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  return bestIndex;
+};
+
 const applyDefaultSelections = () => {
-  const keys = ["back", "front", "top"];
+  const keys = ["front", "top", "back"];
   const used = new Set();
 
   keys.forEach((key) => {
     const select = slots[key].select;
     if (!select || !select.options.length || !select.options[0].value) return;
 
-    let chosenIndex = -1;
-
-    for (let i = 0; i < select.options.length; i += 1) {
-      const value = select.options[i].value;
-      if (!value || value === SCREEN_SOURCE_ID || used.has(value)) continue;
-      chosenIndex = i;
-      break;
-    }
+    let chosenIndex = findBestOptionIndex(select, key, used);
 
     if (chosenIndex === -1) {
       for (let i = 0; i < select.options.length; i += 1) {
