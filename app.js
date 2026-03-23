@@ -331,15 +331,32 @@ const listVideoDevices = async () => {
   return devices.filter((device) => device.kind === "videoinput");
 };
 
-const fillSelectOptions = (select, devices) => {
+const fillSelectOptions = (select, devices, slotKey) => {
   if (!select) return;
   const previous = select.value;
   select.innerHTML = "";
 
+  const displayPreference = SLOT_DISPLAY_PREFERENCES[slotKey];
+  const preferredDevice = displayPreference
+    ? devices.find((device) => matchesPreferredModel(slotKey, device.label))
+    : null;
+
+  if (displayPreference && !preferredDevice) {
+    const missingOption = document.createElement("option");
+    missingOption.value = displayPreference.missingValue;
+    missingOption.textContent = `${displayPreference.displayName} (not detected)`;
+    missingOption.disabled = true;
+    select.appendChild(missingOption);
+  }
+
   devices.forEach((device, index) => {
     const option = document.createElement("option");
     option.value = device.deviceId;
-    option.textContent = device.label || `Camera ${index + 1}`;
+    if (displayPreference && preferredDevice && preferredDevice.deviceId === device.deviceId) {
+      option.textContent = displayPreference.displayName;
+    } else {
+      option.textContent = device.label || `Camera ${index + 1}`;
+    }
     select.appendChild(option);
   });
 
@@ -381,6 +398,13 @@ const SLOT_DEVICE_PREFERENCES = {
   top: ["iphone 14 pro"],
 };
 
+const SLOT_DISPLAY_PREFERENCES = {
+  front: {
+    displayName: "Prum iPhone 17 Pro",
+    missingValue: "__missing_front_iphone_17_pro__",
+  },
+};
+
 const normalizeDeviceLabel = (label) => (
   (label || "")
     .toLowerCase()
@@ -390,20 +414,24 @@ const normalizeDeviceLabel = (label) => (
 
 const compactDeviceLabel = (label) => normalizeDeviceLabel(label).replace(/\s+/g, "");
 
-const getPreferenceScore = (slotKey, label) => {
+const matchesPreferredModel = (slotKey, label) => {
   const normalized = normalizeDeviceLabel(label);
   const compactNormalized = compactDeviceLabel(label);
-  if (!normalized) return 0;
+  if (!normalized) return false;
 
   const preferredModels = SLOT_DEVICE_PREFERENCES[slotKey] || [];
-  for (const modelHint of preferredModels) {
+  return preferredModels.some((modelHint) => {
     const normalizedHint = normalizeDeviceLabel(modelHint);
     const compactHint = compactDeviceLabel(modelHint);
+    return normalized.includes(normalizedHint) || compactNormalized.includes(compactHint);
+  });
+};
 
-    if (normalized.includes(normalizedHint) || compactNormalized.includes(compactHint)) {
-      return 100;
-    }
-  }
+const getPreferenceScore = (slotKey, label) => {
+  const normalized = normalizeDeviceLabel(label);
+  if (!normalized) return 0;
+
+  if (matchesPreferredModel(slotKey, label)) return 100;
 
   if (slotKey === "front") {
     let score = 0;
@@ -437,7 +465,7 @@ const findBestOptionIndex = (select, slotKey, used) => {
   for (let i = 0; i < select.options.length; i += 1) {
     const option = select.options[i];
     const value = option.value;
-    if (!value || used.has(value)) continue;
+    if (!value || option.disabled || used.has(value)) continue;
 
     const score = getPreferenceScore(slotKey, option.textContent);
     if (score > bestScore) {
@@ -460,7 +488,7 @@ const applyDefaultSelections = () => {
     const currentValue = select.value;
     if (
       currentValue &&
-      Array.from(select.options).some((option) => option.value === currentValue)
+      Array.from(select.options).some((option) => option.value === currentValue && !option.disabled)
     ) {
       used.add(currentValue);
       return;
@@ -471,7 +499,7 @@ const applyDefaultSelections = () => {
     if (chosenIndex === -1) {
       for (let i = 0; i < select.options.length; i += 1) {
         const value = select.options[i].value;
-        if (!value || used.has(value)) continue;
+        if (!value || select.options[i].disabled || used.has(value)) continue;
         chosenIndex = i;
         break;
       }
@@ -543,9 +571,9 @@ const enableCameras = async () => {
     }
 
     const devices = await listVideoDevices();
-    fillSelectOptions(slots.back.select, devices);
-    fillSelectOptions(slots.front.select, devices);
-    fillSelectOptions(slots.top.select, devices);
+    fillSelectOptions(slots.back.select, devices, "back");
+    fillSelectOptions(slots.front.select, devices, "front");
+    fillSelectOptions(slots.top.select, devices, "top");
     applyDefaultSelections();
 
     const startResults = await Promise.allSettled([
