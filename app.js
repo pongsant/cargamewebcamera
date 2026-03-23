@@ -1,11 +1,3 @@
-import {
-  SCREEN_SOURCE_ID,
-  createRoomCode,
-  isRemoteSourceId,
-  normalizeRoomCode,
-} from "./rtc-shared.js";
-import { createRemoteRoomHost } from "./remote-room.js";
-
 const START_GATE_KEY = "raceControlStarted";
 const exitBtn = document.getElementById("exitBtn");
 
@@ -302,15 +294,12 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   renderScoreboard();
 }
 
+const SCREEN_SOURCE_ID = "__screen_share__";
 const enableCamsBtn = document.getElementById("enableCamsBtn");
 const stopCamsBtn = document.getElementById("stopCamsBtn");
 const cameraStatus = document.getElementById("cameraStatus");
-const remoteStatus = document.getElementById("remoteStatus");
 const programSelect = document.getElementById("programSelect");
 const mainVideo = document.getElementById("mainVideo");
-const roomLinkField = document.getElementById("roomLinkField");
-const copyRoomLinkBtn = document.getElementById("copyRoomLinkBtn");
-const remoteRoster = document.getElementById("remoteRoster");
 
 const slots = {
   back: { select: document.getElementById("backSelect"), video: document.getElementById("backVideo"), stream: null },
@@ -325,15 +314,41 @@ const cameraSupported =
 const screenShareSupported =
   Boolean(navigator.mediaDevices) &&
   typeof navigator.mediaDevices.getDisplayMedia === "function";
+const sourceSupported = cameraSupported || screenShareSupported;
 let localVideoDevices = [];
-let remoteSources = new Map();
+
+const FRONT_LABEL_HINTS = [
+  "iphone",
+  "front",
+  "continuity",
+  "ios",
+  "phone",
+];
+
+const TOP_LABEL_HINTS = [
+  "logitech",
+  "webcam",
+  "usb",
+  "brio",
+  "c920",
+  "c922",
+  "c930",
+];
+
+const SLOT_DEVICE_PREFERENCES = {
+  front: ["iphone 17 pro"],
+  top: ["iphone 14 pro"],
+};
+
+const SLOT_DISPLAY_PREFERENCES = {
+  front: {
+    displayName: "Prum iPhone 17 Pro",
+    missingValue: "__missing_front_iphone_17_pro__",
+  },
+};
 
 const updateStatus = (message) => {
   if (cameraStatus) cameraStatus.textContent = message;
-};
-
-const updateRemoteStatus = (message) => {
-  if (remoteStatus) remoteStatus.textContent = message;
 };
 
 const stopStream = (stream) => {
@@ -351,20 +366,78 @@ const setSlotStream = (slotKey, stream) => {
   }
 };
 
+const normalizeDeviceLabel = (label) => (
+  (label || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+);
+
+const compactDeviceLabel = (label) => normalizeDeviceLabel(label).replace(/\s+/g, "");
+
+const matchesPreferredModel = (slotKey, label) => {
+  const normalized = normalizeDeviceLabel(label);
+  const compactNormalized = compactDeviceLabel(label);
+  if (!normalized) return false;
+
+  const preferredModels = SLOT_DEVICE_PREFERENCES[slotKey] || [];
+  return preferredModels.some((modelHint) => {
+    const normalizedHint = normalizeDeviceLabel(modelHint);
+    const compactHint = compactDeviceLabel(modelHint);
+    return normalized.includes(normalizedHint) || compactNormalized.includes(compactHint);
+  });
+};
+
+const isMissingPreferenceValue = (slotKey, value) => {
+  const missingValue = SLOT_DISPLAY_PREFERENCES[slotKey]?.missingValue;
+  return Boolean(missingValue) && value === missingValue;
+};
+
+const getPreferenceScore = (slotKey, label) => {
+  const normalized = normalizeDeviceLabel(label);
+  if (!normalized) return 0;
+
+  if (matchesPreferredModel(slotKey, label)) return 100;
+
+  if (slotKey === "front") {
+    let score = 0;
+    FRONT_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 2;
+    });
+    if (normalized.includes("14 pro")) score -= 10;
+    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
+    if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
+    return score;
+  }
+
+  if (slotKey === "top") {
+    let score = 0;
+    TOP_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 3;
+    });
+    if (normalized.includes("iphone")) score -= 1;
+    if (normalized.includes("17 pro")) score -= 10;
+    return score;
+  }
+
+  return 0;
+};
+
 const addScreenShareEndedHandler = (stream) => {
   const [videoTrack] = stream.getVideoTracks();
   if (!videoTrack) return;
 
   videoTrack.addEventListener("ended", () => {
-    Object.values(slots).forEach((currentSlot) => {
-      if (currentSlot.select?.value === SCREEN_SOURCE_ID) {
-        stopStream(currentSlot.stream);
-        currentSlot.stream = null;
-        if (currentSlot.video) currentSlot.video.srcObject = null;
+    Object.values(slots).forEach((slot) => {
+      if (slot.select?.value === SCREEN_SOURCE_ID) {
+        stopStream(slot.stream);
+        slot.stream = null;
+        if (slot.video) slot.video.srcObject = null;
       }
     });
     refreshProgramFeed();
-    updateStatus("Screen share ended. Choose Screen / Window again to resume.");
+    updateStatus("FaceTime screen share ended. Choose Screen / Window again to resume.");
   }, { once: true });
 };
 
@@ -375,6 +448,7 @@ const refreshProgramFeed = () => {
 };
 
 const listVideoDevices = async () => {
+  if (!cameraSupported) return [];
   const devices = await navigator.mediaDevices.enumerateDevices();
   return devices.filter((device) => device.kind === "videoinput");
 };
@@ -414,14 +488,7 @@ const fillSelectOptions = (select, devices, slotKey) => {
     select.appendChild(option);
   });
 
-  remoteSources.forEach((source) => {
-    const option = document.createElement("option");
-    option.value = source.id;
-    option.textContent = `${source.label} (Remote)`;
-    select.appendChild(option);
-  });
-
-  if (devices.length === 0 && !screenShareSupported && remoteSources.size === 0) {
+  if (devices.length === 0 && !screenShareSupported) {
     const option = document.createElement("option");
     option.value = "";
     option.textContent = "No source found";
@@ -436,94 +503,6 @@ const fillSelectOptions = (select, devices, slotKey) => {
   }
 };
 
-const FRONT_LABEL_HINTS = [
-  "iphone",
-  "front",
-  "continuity",
-  "ios",
-  "phone",
-];
-
-const TOP_LABEL_HINTS = [
-  "logitech",
-  "webcam",
-  "usb",
-  "brio",
-  "c920",
-  "c922",
-  "c930",
-];
-
-const SLOT_DEVICE_PREFERENCES = {
-  front: ["iphone 17 pro"],
-  top: ["iphone 14 pro"],
-};
-
-const SLOT_DISPLAY_PREFERENCES = {
-  front: {
-    displayName: "Prum iPhone 17 Pro",
-    missingValue: "__missing_front_iphone_17_pro__",
-  },
-};
-
-const isMissingPreferenceValue = (slotKey, value) => {
-  const missingValue = SLOT_DISPLAY_PREFERENCES[slotKey]?.missingValue;
-  return Boolean(missingValue) && value === missingValue;
-};
-
-const normalizeDeviceLabel = (label) => (
-  (label || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-);
-
-const compactDeviceLabel = (label) => normalizeDeviceLabel(label).replace(/\s+/g, "");
-
-const matchesPreferredModel = (slotKey, label) => {
-  const normalized = normalizeDeviceLabel(label);
-  const compactNormalized = compactDeviceLabel(label);
-  if (!normalized) return false;
-
-  const preferredModels = SLOT_DEVICE_PREFERENCES[slotKey] || [];
-  return preferredModels.some((modelHint) => {
-    const normalizedHint = normalizeDeviceLabel(modelHint);
-    const compactHint = compactDeviceLabel(modelHint);
-    return normalized.includes(normalizedHint) || compactNormalized.includes(compactHint);
-  });
-};
-
-const getPreferenceScore = (slotKey, label) => {
-  const normalized = normalizeDeviceLabel(label);
-  if (!normalized) return 0;
-
-  if (matchesPreferredModel(slotKey, label)) return 100;
-
-  if (slotKey === "front") {
-    let score = 0;
-    FRONT_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 2;
-    });
-    if (normalized.includes("14 pro")) score -= 10;
-    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
-    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
-    if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
-    return score;
-  }
-
-  if (slotKey === "top") {
-    let score = 0;
-    TOP_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 3;
-    });
-    if (normalized.includes("iphone")) score -= 1;
-    if (normalized.includes("17 pro")) score -= 10;
-    return score;
-  }
-
-  return 0;
-};
-
 const findBestOptionIndex = (select, slotKey, used) => {
   let bestIndex = -1;
   let bestScore = Number.NEGATIVE_INFINITY;
@@ -534,7 +513,6 @@ const findBestOptionIndex = (select, slotKey, used) => {
     if (
       !value ||
       value === SCREEN_SOURCE_ID ||
-      isRemoteSourceId(value) ||
       isMissingPreferenceValue(slotKey, value) ||
       option.disabled ||
       used.has(value)
@@ -633,12 +611,10 @@ const startScreenShareSlot = (slotKey) => {
     return Promise.reject(new Error("Screen sharing is not supported in this browser."));
   }
 
-  const screenSharePromise = navigator.mediaDevices.getDisplayMedia({
+  return navigator.mediaDevices.getDisplayMedia({
     video: true,
     audio: false,
-  });
-
-  return screenSharePromise.then((stream) => {
+  }).then((stream) => {
     addScreenShareEndedHandler(stream);
     setSlotStream(slotKey, stream);
   });
@@ -652,18 +628,8 @@ const startSlot = async (slotKey) => {
   slot.stream = null;
 
   const sameSourceSlot = getMatchingSourceSlot(slotKey, slot.select.value);
-
   if (sameSourceSlot) {
     setSlotStream(slotKey, sameSourceSlot[1].stream.clone());
-    return;
-  }
-
-  if (isRemoteSourceId(slot.select.value)) {
-    const remoteSource = remoteSources.get(slot.select.value);
-    if (!remoteSource?.stream) {
-      throw new Error("Remote source is not available.");
-    }
-    setSlotStream(slotKey, remoteSource.stream.clone());
     return;
   }
 
@@ -699,66 +665,41 @@ const stopAllCameras = () => {
   updateStatus("Cameras stopped.");
 };
 
-const syncRemoteSelections = () => {
-  Object.entries(slots).forEach(([slotKey, slot]) => {
-    if (!slot.select || !isRemoteSourceId(slot.select.value)) return;
-
-    const source = remoteSources.get(slot.select.value);
-    if (!source) {
-      stopStream(slot.stream);
-      slot.stream = null;
-      if (slot.video) slot.video.srcObject = null;
-      if (mainVideo && programSelect?.value === slotKey) {
-        mainVideo.srcObject = null;
-      }
-      return;
-    }
-
-    const sameSourceSlot = getMatchingSourceSlot(slotKey, slot.select.value);
-    if (sameSourceSlot) {
-      setSlotStream(slotKey, sameSourceSlot[1].stream.clone());
-    } else {
-      setSlotStream(slotKey, source.stream.clone());
-    }
-  });
-
-  refreshProgramFeed();
-};
-
 const enableCameras = async () => {
-  if (!cameraSupported) {
-    updateStatus("Camera API is not supported in this browser.");
+  if (!sourceSupported) {
+    updateStatus("Camera and screen-share APIs are not supported in this browser.");
     return;
   }
 
   try {
-    updateStatus("Preparing camera and screen sources...");
+    updateStatus("Preparing Prum iPhone 17 Pro and FaceTime sources...");
 
-    try {
-      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      stopStream(tempStream);
-    } catch (permissionError) {
-      // Continue with available sources.
+    if (cameraSupported) {
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        stopStream(tempStream);
+      } catch (permissionError) {
+        // Continue with available sources such as screen share.
+      }
     }
 
     localVideoDevices = await listVideoDevices();
     refreshSourceOptions();
 
     const startResults = await Promise.allSettled([
-      startSlot("back"),
       startSlot("front"),
       startSlot("top"),
     ]);
 
     const successCount = startResults.filter((result) => result.status === "fulfilled").length;
-
     refreshProgramFeed();
+
     if (successCount > 0) {
-      updateStatus("Sources connected. Choose Screen / Window if you want to capture a FaceTime feed.");
+      updateStatus("Sources connected. Choose Prum iPhone 17 Pro or Screen / Window (FaceTime).");
     } else if (screenShareSupported) {
-      updateStatus("No camera source started. You can still choose Screen / Window to show a FaceTime call.");
+      updateStatus("No camera started yet. Choose Screen / Window (FaceTime) to show your FaceTime call.");
     } else {
-      updateStatus("No camera sources available. Check permissions and connected devices.");
+      updateStatus("No camera sources available. Check browser permissions and connected devices.");
     }
   } catch (error) {
     updateStatus("Cannot initialize sources. Check browser permissions and reload.");
@@ -766,122 +707,11 @@ const enableCameras = async () => {
   }
 };
 
-const renderRemoteRoster = (entries) => {
-  if (!remoteRoster) return;
-  remoteRoster.innerHTML = "";
-
-  if (!entries.length) {
-    const pill = document.createElement("span");
-    pill.className = "remote-roster-pill remote-roster-pill--idle";
-    pill.textContent = "No phones joined yet";
-    remoteRoster.appendChild(pill);
-    return;
-  }
-
-  entries.forEach((entry) => {
-    const pill = document.createElement("span");
-    pill.className = `remote-roster-pill${entry.live ? " remote-roster-pill--live" : ""}`;
-    pill.textContent = entry.live ? `${entry.name} live` : `${entry.name} connecting`;
-    remoteRoster.appendChild(pill);
-  });
-};
-
-const copyText = async (value, successMessage) => {
-  if (!value) return;
-
-  try {
-    await navigator.clipboard.writeText(value);
-    updateRemoteStatus(successMessage);
-  } catch (error) {
-    updateRemoteStatus("Copy failed. You can select the field and copy it manually.");
-  }
-};
-
-const buildJoinLink = (baseUrl, roomCode) => {
-  if (!baseUrl) return "";
-  const normalizedBaseUrl = String(baseUrl).trim().replace(/\/+$/, "");
-  return `${normalizedBaseUrl}/phone.html?room=${roomCode}`;
-};
-
-const fetchAppConfig = async () => {
-  if (!window.location.protocol.startsWith("http")) return null;
-
-  try {
-    const response = await fetch("/app-config.json", { cache: "no-store" });
-    if (!response.ok) return null;
-    return response.json();
-  } catch (error) {
-    return null;
-  }
-};
-
-const roomParams = new URLSearchParams(window.location.search);
-const currentRoomCode = normalizeRoomCode(roomParams.get("room")) || createRoomCode();
-if (window.location.protocol.startsWith("http")) {
-  roomParams.set("room", currentRoomCode);
-  const nextUrl = `${window.location.pathname}?${roomParams.toString()}`;
-  window.history.replaceState({}, "", nextUrl);
+if (cameraStatus) {
+  updateStatus("Enable Cameras, then choose Prum iPhone 17 Pro or Screen / Window (FaceTime).");
 }
 
-const remoteHost = createRemoteRoomHost({
-  roomId: currentRoomCode,
-  onStatus: (message) => {
-    updateRemoteStatus(message);
-  },
-  onRosterChange: (entries) => {
-    renderRemoteRoster(entries);
-  },
-  onSourcesChange: (sources) => {
-    remoteSources = sources;
-    refreshSourceOptions();
-    syncRemoteSelections();
-  },
-});
-
-let currentJoinLink = "";
-
-const refreshJoinLink = async (attempt = 0) => {
-  const appConfig = await fetchAppConfig();
-
-  const publicJoinBaseUrl = appConfig?.publicBaseUrl || "";
-  currentJoinLink = publicJoinBaseUrl ? buildJoinLink(publicJoinBaseUrl, currentRoomCode) : "";
-
-  if (roomLinkField) {
-    roomLinkField.value = currentJoinLink || "Preparing public link...";
-  }
-
-  if (copyRoomLinkBtn) {
-    copyRoomLinkBtn.disabled = !currentJoinLink;
-  }
-
-  if (publicJoinBaseUrl) {
-    updateRemoteStatus("Share this link with other phones.");
-    return;
-  }
-
-  if (attempt < 30) {
-    updateRemoteStatus("Preparing a working public phone link...");
-    window.setTimeout(() => {
-      refreshJoinLink(attempt + 1);
-    }, 3000);
-    return;
-  }
-
-  updateRemoteStatus("Public link did not finish loading. Restart `npm start` and wait for the link field to update.");
-};
-
-copyRoomLinkBtn?.addEventListener("click", () => {
-  copyText(currentJoinLink, "Join link copied.");
-});
-
-renderRemoteRoster([]);
-remoteHost.connect();
-refreshJoinLink();
-window.setInterval(() => {
-  refreshJoinLink();
-}, 20000);
-
-if (cameraSupported && enableCamsBtn && stopCamsBtn) {
+if (sourceSupported && enableCamsBtn && stopCamsBtn) {
   enableCamsBtn.addEventListener("click", () => {
     enableCameras();
   });
@@ -899,7 +729,7 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
         startScreenShareSlot(slotKey)
           .then(() => {
             refreshProgramFeed();
-            updateStatus("Screen / Window source connected.");
+            updateStatus("FaceTime screen share connected.");
           })
           .catch((error) => {
             updateStatus("Screen share was canceled or blocked.");
@@ -912,9 +742,9 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
         try {
           await startSlot(slotKey);
           refreshProgramFeed();
-          updateStatus(isRemoteSourceId(slot.select.value) ? "Remote source updated." : "Camera source updated.");
+          updateStatus("Camera source updated.");
         } catch (error) {
-          updateStatus(isRemoteSourceId(slot.select.value) ? "Failed to switch remote source." : "Failed to switch camera source.");
+          updateStatus(error.message || "Failed to switch camera source.");
           console.error(error);
         }
       })();
