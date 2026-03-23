@@ -11,7 +11,7 @@ import websockets
 
 HOST = "0.0.0.0"
 PORT = 8765
-CAMERA_INDEX = 2
+CAMERA_INDEX = 0
 PENALTY_SECONDS = 1.0
 
 command_queue = queue.Queue()
