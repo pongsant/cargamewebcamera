@@ -324,6 +324,33 @@ const stopStream = (stream) => {
   for (const track of stream.getTracks()) track.stop();
 };
 
+const setSlotStream = (slotKey, stream) => {
+  const slot = slots[slotKey];
+  if (!slot) return;
+  slot.stream = stream;
+  if (slot.video) {
+    slot.video.srcObject = stream;
+    slot.video.play().catch(() => {});
+  }
+};
+
+const addScreenShareEndedHandler = (stream) => {
+  const [videoTrack] = stream.getVideoTracks();
+  if (!videoTrack) return;
+
+  videoTrack.addEventListener("ended", () => {
+    Object.values(slots).forEach((currentSlot) => {
+      if (currentSlot.select?.value === SCREEN_SOURCE_ID) {
+        stopStream(currentSlot.stream);
+        currentSlot.stream = null;
+        if (currentSlot.video) currentSlot.video.srcObject = null;
+      }
+    });
+    refreshProgramFeed();
+    updateStatus("Screen share ended. Choose Screen / Window again to resume.");
+  }, { once: true });
+};
+
 const refreshProgramFeed = () => {
   if (!mainVideo || !programSelect) return;
   const selected = slots[programSelect.value];
@@ -523,6 +550,43 @@ const applyDefaultSelections = () => {
   });
 };
 
+const getMatchingSourceSlot = (slotKey, sourceValue) => Object.entries(slots).find(([key, current]) => (
+  key !== slotKey &&
+  current.select &&
+  current.select.value === sourceValue &&
+  current.stream
+));
+
+const startScreenShareSlot = (slotKey) => {
+  const slot = slots[slotKey];
+  if (!slot || !slot.select || !slot.video || slot.select.value !== SCREEN_SOURCE_ID) {
+    return Promise.resolve();
+  }
+
+  stopStream(slot.stream);
+  slot.stream = null;
+
+  const sameSourceSlot = getMatchingSourceSlot(slotKey, SCREEN_SOURCE_ID);
+  if (sameSourceSlot) {
+    setSlotStream(slotKey, sameSourceSlot[1].stream.clone());
+    return Promise.resolve();
+  }
+
+  if (!screenShareSupported) {
+    return Promise.reject(new Error("Screen sharing is not supported in this browser."));
+  }
+
+  const screenSharePromise = navigator.mediaDevices.getDisplayMedia({
+    video: true,
+    audio: false,
+  });
+
+  return screenSharePromise.then((stream) => {
+    addScreenShareEndedHandler(stream);
+    setSlotStream(slotKey, stream);
+  });
+};
+
 const startSlot = async (slotKey) => {
   const slot = slots[slotKey];
   if (!slot || !slot.select || !slot.video || !slot.select.value) return;
@@ -530,56 +594,24 @@ const startSlot = async (slotKey) => {
   stopStream(slot.stream);
   slot.stream = null;
 
-  const sameSourceSlot = Object.entries(slots).find(([key, current]) => (
-    key !== slotKey &&
-    current.select &&
-    current.select.value === slot.select.value &&
-    current.stream
-  ));
+  const sameSourceSlot = getMatchingSourceSlot(slotKey, slot.select.value);
 
   if (sameSourceSlot) {
-    slot.stream = sameSourceSlot[1].stream.clone();
-    slot.video.srcObject = slot.stream;
-    slot.video.play().catch(() => {});
+    setSlotStream(slotKey, sameSourceSlot[1].stream.clone());
     return;
   }
 
-  let stream = null;
-
   if (slot.select.value === SCREEN_SOURCE_ID) {
-    if (!screenShareSupported) {
-      throw new Error("Screen sharing is not supported in this browser.");
-    }
-
-    stream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: false,
-    });
-
-    const [videoTrack] = stream.getVideoTracks();
-    if (videoTrack) {
-      videoTrack.addEventListener("ended", () => {
-        Object.values(slots).forEach((currentSlot) => {
-          if (currentSlot.select?.value === SCREEN_SOURCE_ID) {
-            stopStream(currentSlot.stream);
-            currentSlot.stream = null;
-            if (currentSlot.video) currentSlot.video.srcObject = null;
-          }
-        });
-        refreshProgramFeed();
-        updateStatus("Screen share ended. Choose Screen / Window again to resume.");
-      }, { once: true });
-    }
-  } else {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: slot.select.value } },
-      audio: false,
-    });
+    await startScreenShareSlot(slotKey);
+    return;
   }
 
-  slot.stream = stream;
-  slot.video.srcObject = stream;
-  slot.video.play().catch(() => {});
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { deviceId: { exact: slot.select.value } },
+    audio: false,
+  });
+
+  setSlotStream(slotKey, stream);
 };
 
 const stopAllCameras = () => {
@@ -649,23 +681,31 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
   Object.entries(slots).forEach(([slotKey, slot]) => {
     if (!slot.select) return;
 
-    slot.select.addEventListener("change", async () => {
-      try {
-        await startSlot(slotKey);
-        refreshProgramFeed();
-        updateStatus(
-          slot.select.value === SCREEN_SOURCE_ID
-            ? "Choose your FaceTime window in the share prompt."
-            : "Camera source updated."
-        );
-      } catch (error) {
-        updateStatus(
-          slot.select.value === SCREEN_SOURCE_ID
-            ? "Screen share was canceled or blocked."
-            : "Failed to switch camera source."
-        );
-        console.error(error);
+    slot.select.addEventListener("change", () => {
+      if (slot.select.value === SCREEN_SOURCE_ID) {
+        updateStatus("Choose your FaceTime window in the share prompt.");
+        startScreenShareSlot(slotKey)
+          .then(() => {
+            refreshProgramFeed();
+            updateStatus("Screen / Window source connected.");
+          })
+          .catch((error) => {
+            updateStatus("Screen share was canceled or blocked.");
+            console.error(error);
+          });
+        return;
       }
+
+      (async () => {
+        try {
+          await startSlot(slotKey);
+          refreshProgramFeed();
+          updateStatus("Camera source updated.");
+        } catch (error) {
+          updateStatus("Failed to switch camera source.");
+          console.error(error);
+        }
+      })();
     });
   });
 
