@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Race Control - Start</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</head>
+<body class="start-mode">
+  <main class="start-stage">
+    <model-viewer
+      class="start-logo-viewer"
+      src="model/F9G_logo_racing_3d.glb"
+      style="--poster-color: transparent;"
+      alt="F9G Racing logo"
+      auto-rotate
+      auto-rotate-delay="0"
+      rotation-per-second="18deg"
+      camera-controls
+      disable-pan
+      interaction-prompt="none"
+      exposure="1"
+      shadow-intensity="1"
+      shadow-softness="0.8"
+      scale="1.5 1.5 1.5"
+    ></model-viewer>
+
+    <button
+      id="startEntryBtn"
+      class="btn btn-enter"
+      type="button"
+      aria-label="Start race control"
+    >
+      <span class="start-btn-core">
+        <span>Engine</span>
+        <span>Start</span>
+      </span>
+    </button>
+  </main>
+
+  <script>
+    (() => {
+      const START_GATE_KEY = "raceControlStarted";
+      const AUTO_START_KEY = "raceControlAutoStart";
+      const startEntryBtn = document.getElementById("startEntryBtn");
+
+      if (!startEntryBtn) return;
+
+      let navigating = false;
+
+      const goToDashboard = () => {
+        if (navigating) return;
+        navigating = true;
+
+        startEntryBtn.disabled = true;
+        startEntryBtn.setAttribute("aria-busy", "true");
+
+        try {
+          sessionStorage.setItem(START_GATE_KEY, "true");
+          sessionStorage.setItem(AUTO_START_KEY, "true");
+        } catch (error) {
+          console.warn("sessionStorage unavailable:", error);
+        }
+
+        window.location.assign("index.html");
+      };
+
+      startEntryBtn.addEventListener("click", goToDashboard);
+
+      startEntryBtn.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          goToDashboard();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

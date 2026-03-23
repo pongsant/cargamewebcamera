@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Race Control - Live Dashboard</title>
+  <script>
+    (() => {
+      const START_GATE_KEY = "raceControlStarted";
+      let canEnterDashboard = false;
+
+      try {
+        canEnterDashboard = sessionStorage.getItem(START_GATE_KEY) === "true";
+      } catch (error) {
+        canEnterDashboard = false;
+      }
+
+      if (!canEnterDashboard) {
+        window.location.replace("start.html");
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</head>
+<body class="dashboard-mode">
+  <header class="top-bar">
+    <div class="top-title-wrap">
+      <model-viewer
+        class="top-logo-viewer"
+        src="model/F9G_logo_racing_3d.glb"
+        alt="F9G Racing logo"
+        auto-rotate
+        auto-rotate-delay="0"
+        rotation-per-second="22deg"
+        disable-pan
+        interaction-prompt="none"
+        style="--poster-color: transparent;"
+      ></model-viewer>
+    </div>
+    <div class="top-status-wrap">
+      <p class="live-state">Live Session</p>
+      <a id="exitBtn" class="btn btn-ghost" href="start.html">Exit</a>
+    </div>
+  </header>
+
+  <main class="dashboard-layout">
+    <section class="camera-module panel-shell">
+      <div class="module-head">
+        <h2>Camera View</h2>
+      </div>
+
+      <div class="camera-setup panel-lite">
+        <p id="cameraStatus" class="setup-note"></p>
+        <div class="setup-actions">
+          <button id="enableCamsBtn" class="btn btn-accent" type="button">Enable Cameras</button>
+          <button id="stopCamsBtn" class="btn" type="button">Stop Cameras</button>
+        </div>
+      </div>
+
+      <div class="camera-main-row">
+        <div class="camera-grid">
+          <article class="camera-card panel-lite camera-card--program">
+            <div class="camera-head">
+              <h3>Main Camera</h3>
+              <span class="live-pill">Live</span>
+            </div>
+            <div class="program-video-wrap">
+              <video id="mainVideo" autoplay playsinline muted></video>
+              <canvas id="laneOverlayCanvas"></canvas>
+            </div>
+
+            <div class="program-debug-row">
+              <button id="toggleLaneOverlayBtn" class="btn" type="button">Toggle Lane Overlay</button>
+              <p id="laneOverlayStatus" class="setup-note">Lane overlay ready.</p>
+            </div>
+            <div class="program-control">
+              <label for="programSelect">Program Source</label>
+              <select id="programSelect" class="control-input">
+                <option value="front">Front Camera</option>
+                <option value="top">Top Cam</option>
+              </select>
+            </div>
+          </article>
+
+          <article class="camera-card panel-lite camera-card--preview">
+            <div class="camera-head">
+              <h3>Front Camera Preview</h3>
+              <select id="frontSelect" class="control-input"></select>
+            </div>
+            <video id="frontVideo" autoplay playsinline muted></video>
+          </article>
+
+          <article class="camera-card panel-lite camera-card--preview">
+            <div class="camera-head">
+              <h3>Top Cam</h3>
+              <select id="topSelect" class="control-input"></select>
+            </div>
+            <video id="topVideo" autoplay playsinline muted></video>
+          </article>
+
+          <article class="camera-card panel-lite camera-card--preview camera-card--backend-debug">
+            <div class="camera-head">
+              <h3>Backend Detection Preview</h3>
+              <button id="toggleBackendDebugBtn" class="btn" type="button">Pause Preview</button>
+            </div>
+            <img id="backendDebugPreview" alt="Backend lane detection preview" />
+            <p id="backendDebugStatus" class="setup-note">Waiting for Python preview…</p>
+          </article>
+        </div>
+
+        <section class="panel-lite camera-timer-panel">
+          <div class="module-head">
+            <h2>Timer Control</h2>
+          </div>
+          <p id="timer" class="timer">00:00.00</p>
+          <div class="timer-actions timer-actions-vertical">
+            <button id="startBtn" class="btn btn-accent" type="button">Start</button>
+            <button id="stopBtn" class="btn" type="button">Stop</button>
+            <button id="resetBtn" class="btn" type="button">Reset</button>
+          </div>
+          <div class="briefing-inline">
+            <div class="module-head">
+              <h2>System Briefing</h2>
+            </div>
+            <p class="setup-note">
+              All cars launch simultaneously and race for fixed laps. Lowest total time wins.
+              Monitor all camera feeds and use timer controls to coordinate race operations.
+            </p>
+          </div>
+
+          <div class="briefing-inline race-telemetry-panel">
+            <div class="module-head">
+              <h2>Live Race Telemetry</h2>
+            </div>
+            <div class="telemetry-grid">
+              <div class="telemetry-item panel-lite">
+                <p class="hud-label">Backend</p>
+                <p id="wsStatus" class="telemetry-value">Connecting…</p>
+              </div>
+              <div class="telemetry-item panel-lite">
+                <p class="hud-label">Penalty Count</p>
+                <p id="penaltyCount" class="telemetry-value">0</p>
+              </div>
+              <div class="telemetry-item panel-lite">
+                <p class="hud-label">Penalty Time</p>
+                <p id="penaltyTime" class="telemetry-value">0.00s</p>
+              </div>
+            </div>
+            <p id="raceStatus" class="setup-note">Waiting for backend…</p>
+            <div id="finalResultBox" class="result-card is-hidden" aria-live="polite">
+              <div class="module-head">
+                <h2>Final Result</h2>
+              </div>
+              <div class="final-result-grid">
+                <div>
+                  <p class="hud-label">Raw Time</p>
+                  <p id="resultRawTime" class="result-value">--</p>
+                </div>
+                <div>
+                  <p class="hud-label">Penalty</p>
+                  <p id="resultPenaltySummary" class="result-value">--</p>
+                </div>
+                <div>
+                  <p class="hud-label">Final Time</p>
+                  <p id="resultFinalTime" class="result-value result-value--accent">--</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="hud-grid">
+        <div class="hud-item panel-lite">
+          <p class="hud-label">Current Lap</p>
+          <p class="hud-value">08 / 10</p>
+        </div>
+        <div class="hud-item panel-lite">
+          <p class="hud-label">Fastest Lap</p>
+          <p class="hud-value">00:58.34</p>
+        </div>
+        <div class="hud-item panel-lite">
+          <p class="hud-label">Track</p>
+          <p class="hud-value">Engineering Loop A</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="scoreboard-bottom panel-shell">
+    <div class="module-head">
+      <h2>Scoreboard</h2>
+    </div>
+    <div class="table-panel panel-lite">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Driver</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="scoreboardBody"></tbody>
+      </table>
+    </div>
+    <div class="score-controls panel-lite">
+      <label for="playerNameInput">Add Player</label>
+      <div class="score-row">
+        <input id="playerNameInput" class="control-input" type="text" placeholder="Player name" />
+        <button id="addPlayerBtn" class="btn" type="button">Add</button>
+      </div>
+      <label for="playerSelect">Save Time To</label>
+      <div class="score-row">
+        <select id="playerSelect" class="control-input"></select>
+        <button id="saveTimeBtn" class="btn btn-accent" type="button">Save Time</button>
+      </div>
+      <p id="scoreStatus" class="setup-note">Add a player to start recording scores.</p>
+    </div>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
