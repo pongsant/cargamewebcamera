@@ -611,8 +611,23 @@ const TOP_LABEL_HINTS = [
 ];
 
 const SLOT_DEVICE_PREFERENCES = {
-  front: ["iphone 17 pro"],
-  top: ["iphone 14 pro"],
+  front: [
+    "prum iphone 17 pro",
+    "iphone 17 pro",
+    "prum iphone",
+    "continuity camera",
+    "continuity",
+    "iphone",
+  ],
+  top: [
+    "prum iphone 17 pro",
+    "iphone 17 pro",
+    "prum iphone",
+    "continuity camera",
+    "continuity",
+    "iphone",
+    "iphone 14 pro",
+  ],
 };
 
 const SLOT_DISPLAY_PREFERENCES = {
@@ -653,35 +668,39 @@ const getPreferenceScore = (slotKey, label) => {
   if (slotKey === "front") {
     let score = 0;
     FRONT_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 3;
+      if (normalized.includes(hint)) score += 2;
     });
-    if (normalized.includes("iphone") || normalized.includes("continuity") || normalized.includes("ios")) score -= 12;
-    if (normalized.includes("phone") || normalized.includes("17 pro") || normalized.includes("14 pro")) score -= 8;
+    if (normalized.includes("14 pro")) score -= 10;
+    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
     if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
     return score;
   }
 
   if (slotKey === "top") {
     let score = 0;
-    TOP_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 3;
+    FRONT_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 2;
     });
-    if (normalized.includes("iphone")) score -= 1;
-    if (normalized.includes("17 pro")) score -= 10;
+    TOP_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 1;
+    });
+    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
     return score;
   }
 
   return 0;
 };
 
-const findBestOptionIndex = (select, slotKey, used) => {
+const findBestOptionIndex = (select, slotKey) => {
   let bestIndex = -1;
   let bestScore = Number.NEGATIVE_INFINITY;
 
   for (let i = 0; i < select.options.length; i += 1) {
     const option = select.options[i];
     const value = option.value;
-    if (!value || option.disabled || used.has(value)) continue;
+    if (!value || option.disabled) continue;
 
     const score = getPreferenceScore(slotKey, option.textContent);
     if (score > bestScore) {
@@ -695,7 +714,6 @@ const findBestOptionIndex = (select, slotKey, used) => {
 
 const applyDefaultSelections = () => {
   const keys = ["front", "top", "back"];
-  const used = new Set();
 
   keys.forEach((key) => {
     const select = slots[key].select;
@@ -706,16 +724,15 @@ const applyDefaultSelections = () => {
       currentValue &&
       Array.from(select.options).some((option) => option.value === currentValue && !option.disabled)
     ) {
-      used.add(currentValue);
       return;
     }
 
-    let chosenIndex = findBestOptionIndex(select, key, used);
+    let chosenIndex = findBestOptionIndex(select, key);
 
     if (chosenIndex === -1) {
       for (let i = 0; i < select.options.length; i += 1) {
         const value = select.options[i].value;
-        if (!value || select.options[i].disabled || used.has(value)) continue;
+        if (!value || select.options[i].disabled) continue;
         chosenIndex = i;
         break;
       }
@@ -724,7 +741,6 @@ const applyDefaultSelections = () => {
     if (chosenIndex === -1) chosenIndex = 0;
 
     select.value = select.options[chosenIndex].value;
-    used.add(select.value);
   });
 };
 

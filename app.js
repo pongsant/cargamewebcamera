@@ -336,8 +336,23 @@ const TOP_LABEL_HINTS = [
 ];
 
 const SLOT_DEVICE_PREFERENCES = {
-  front: ["iphone 17 pro"],
-  top: ["iphone 14 pro"],
+  front: [
+    "prum iphone 17 pro",
+    "iphone 17 pro",
+    "prum iphone",
+    "continuity camera",
+    "continuity",
+    "iphone",
+  ],
+  top: [
+    "prum iphone 17 pro",
+    "iphone 17 pro",
+    "prum iphone",
+    "continuity camera",
+    "continuity",
+    "iphone",
+    "iphone 14 pro",
+  ],
 };
 
 const SLOT_DISPLAY_PREFERENCES = {
@@ -413,11 +428,14 @@ const getPreferenceScore = (slotKey, label) => {
 
   if (slotKey === "top") {
     let score = 0;
-    TOP_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 3;
+    FRONT_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 2;
     });
-    if (normalized.includes("iphone")) score -= 1;
-    if (normalized.includes("17 pro")) score -= 10;
+    TOP_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 1;
+    });
+    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
     return score;
   }
 
@@ -503,7 +521,7 @@ const fillSelectOptions = (select, devices, slotKey) => {
   }
 };
 
-const findBestOptionIndex = (select, slotKey, used) => {
+const findBestOptionIndex = (select, slotKey) => {
   let bestIndex = -1;
   let bestScore = Number.NEGATIVE_INFINITY;
 
@@ -514,8 +532,7 @@ const findBestOptionIndex = (select, slotKey, used) => {
       !value ||
       value === SCREEN_SOURCE_ID ||
       isMissingPreferenceValue(slotKey, value) ||
-      option.disabled ||
-      used.has(value)
+      option.disabled
     ) continue;
 
     const score = getPreferenceScore(slotKey, option.textContent);
@@ -530,7 +547,6 @@ const findBestOptionIndex = (select, slotKey, used) => {
 
 const applyDefaultSelections = () => {
   const keys = ["front", "top", "back"];
-  const used = new Set();
 
   keys.forEach((key) => {
     const select = slots[key].select;
@@ -541,11 +557,10 @@ const applyDefaultSelections = () => {
       currentValue &&
       Array.from(select.options).some((option) => option.value === currentValue && !option.disabled)
     ) {
-      used.add(currentValue);
       return;
     }
 
-    let chosenIndex = findBestOptionIndex(select, key, used);
+    let chosenIndex = findBestOptionIndex(select, key);
 
     if (chosenIndex === -1) {
       for (let i = 0; i < select.options.length; i += 1) {
@@ -554,8 +569,7 @@ const applyDefaultSelections = () => {
           !value ||
           value === SCREEN_SOURCE_ID ||
           isMissingPreferenceValue(key, value) ||
-          select.options[i].disabled ||
-          used.has(value)
+          select.options[i].disabled
         ) continue;
         chosenIndex = i;
         break;
@@ -565,7 +579,7 @@ const applyDefaultSelections = () => {
     if (chosenIndex === -1) {
       for (let i = 0; i < select.options.length; i += 1) {
         const value = select.options[i].value;
-        if (!value || select.options[i].disabled || used.has(value)) continue;
+        if (!value || select.options[i].disabled) continue;
         chosenIndex = i;
         break;
       }
@@ -574,7 +588,6 @@ const applyDefaultSelections = () => {
     if (chosenIndex === -1) chosenIndex = 0;
 
     select.value = select.options[chosenIndex].value;
-    used.add(select.value);
   });
 };
 
@@ -591,6 +604,20 @@ const getMatchingSourceSlot = (slotKey, sourceValue) => Object.entries(slots).fi
   current.select.value === sourceValue &&
   current.stream
 ));
+
+const findPreferredDeviceId = (slotKey) => {
+  const directMatch = localVideoDevices.find((device) => matchesPreferredModel(slotKey, device.label));
+  if (directMatch) return directMatch.deviceId;
+
+  if (slotKey === "front") {
+    const fallback = localVideoDevices
+      .filter((device) => getPreferenceScore("front", device.label) > 0)
+      .sort((a, b) => getPreferenceScore("front", b.label) - getPreferenceScore("front", a.label))[0];
+    if (fallback) return fallback.deviceId;
+  }
+
+  return "";
+};
 
 const startScreenShareSlot = (slotKey) => {
   const slot = slots[slotKey];
@@ -639,7 +666,7 @@ const startSlot = async (slotKey) => {
   }
 
   const resolvedDeviceId = isMissingPreferenceValue(slotKey, slot.select.value)
-    ? localVideoDevices.find((device) => matchesPreferredModel(slotKey, device.label))?.deviceId
+    ? findPreferredDeviceId(slotKey)
     : slot.select.value;
 
   if (!resolvedDeviceId) {
