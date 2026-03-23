@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import contextlib
 import json
 import queue
@@ -13,8 +14,12 @@ HOST = "0.0.0.0"
 PORT = 8765
 CAMERA_INDEX = 0
 PENALTY_SECONDS = 1.0
+FRAME_QUEUE_MAX = 4
+FRAME_IDLE_SLEEP = 0.01
+WEBSOCKET_MAX_SIZE = 8_000_000
 
 command_queue = queue.Queue()
+frame_queue = queue.Queue(maxsize=FRAME_QUEUE_MAX)
 clients = set()
 clients_lock = threading.Lock()
 server_loop = None
@@ -64,6 +69,31 @@ def push_event(payload):
     asyncio.run_coroutine_threadsafe(broadcast(payload), server_loop)
 
 
+def enqueue_frame_from_payload(payload):
+    image_payload = payload.get("image")
+    if not isinstance(image_payload, str) or not image_payload:
+        return False, "Frame payload is missing image data."
+
+    try:
+        image_bytes = base64.b64decode(image_payload)
+        image_np = np.frombuffer(image_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
+    except Exception:
+        return False, "Could not decode frame payload."
+
+    if frame is None:
+        return False, "Decoded frame is empty."
+
+    while frame_queue.full():
+        try:
+            frame_queue.get_nowait()
+        except queue.Empty:
+            break
+
+    frame_queue.put_nowait(frame)
+    return True, None
+
+
 async def handle_client(websocket):
     with clients_lock:
         clients.add(websocket)
@@ -88,18 +118,33 @@ async def handle_client(websocket):
             command_type = payload.get("type")
             if command_type in {"arm", "reset", "stop"}:
                 command_queue.put(command_type)
-            else:
-                await websocket.send(json.dumps({
-                    "type": "error",
-                    "message": f"Unsupported command: {command_type}",
-                }))
+                continue
+
+            if command_type == "frame":
+                ok, error_message = enqueue_frame_from_payload(payload)
+                if not ok:
+                    await websocket.send(json.dumps({
+                        "type": "error",
+                        "message": error_message,
+                    }))
+                continue
+
+            await websocket.send(json.dumps({
+                "type": "error",
+                "message": f"Unsupported command: {command_type}",
+            }))
     finally:
         with clients_lock:
             clients.discard(websocket)
 
 
 async def websocket_main():
-    async with websockets.serve(handle_client, HOST, PORT):
+    async with websockets.serve(
+        handle_client,
+        HOST,
+        PORT,
+        max_size=WEBSOCKET_MAX_SIZE,
+    ):
         print(f"WebSocket server listening on ws://{HOST}:{PORT}")
         await asyncio.Future()
 
@@ -111,10 +156,72 @@ def start_websocket_server():
     server_loop.run_until_complete(websocket_main())
 
 
+def normalize(v):
+    n = np.linalg.norm(v)
+    if n == 0:
+        return v
+    return v / n
+
+
+def point_is_inside_lane(x, y, mask):
+    if 0 <= x < mask.shape[1] and 0 <= y < mask.shape[0]:
+        return mask[y, x] > 0
+    return False
+
+
+def point_has_passed_line(point, line_point, direction_vec):
+    p = np.array(point, dtype=np.float32)
+    lp = np.array(line_point, dtype=np.float32)
+    return np.dot(p - lp, direction_vec) >= 0
+
+
+def reset_game():
+    return {
+        "game_running": False,
+        "timer_finished": False,
+        "start_time": 0.0,
+        "raw_time": 0.0,
+        "final_time": 0.0,
+        "outside_count": 0,
+        "was_inside_lane": True,
+        "was_before_finish": True,
+    }
+
+
+def pop_latest_browser_frame():
+    latest_frame = None
+    while True:
+        try:
+            latest_frame = frame_queue.get_nowait()
+        except queue.Empty:
+            break
+    return latest_frame
+
+
+def read_next_frame(capture):
+    frame = pop_latest_browser_frame()
+    if frame is not None:
+        return frame
+
+    if capture is None:
+        return None
+
+    ret, frame = capture.read()
+    if not ret:
+        return None
+    return frame
+
+
 server_thread = threading.Thread(target=start_websocket_server, daemon=True)
 server_thread.start()
 
-cap = cv2.VideoCapture(CAMERA_INDEX)
+fallback_cap = cv2.VideoCapture(CAMERA_INDEX)
+if not fallback_cap.isOpened():
+    print("Could not open local camera. Waiting for browser frames from the website.")
+    fallback_cap.release()
+    fallback_cap = None
+else:
+    print(f"Opened local camera index {CAMERA_INDEX} as fallback source.")
 
 # ----------------------------
 # green marker range (HSV)
@@ -140,11 +247,12 @@ guide_points = np.array([
 GUIDE_W = 640
 GUIDE_H = 360
 
-ret, frame = cap.read()
-if not ret:
-    print("Could not read camera")
-    cap.release()
-    raise SystemExit
+print("Waiting for first frame from website (Chrome/iPhone) or local camera...")
+frame = None
+while frame is None:
+    frame = read_next_frame(fallback_cap)
+    if frame is None:
+        time.sleep(FRAME_IDLE_SLEEP)
 
 cam_h, cam_w = frame.shape[:2]
 
@@ -176,14 +284,6 @@ next_start_pt = track_points[1].astype(np.float32)
 end_prev_pt = track_points[-2].astype(np.float32)
 end_pt = track_points[-1].astype(np.float32)
 
-
-def normalize(v):
-    n = np.linalg.norm(v)
-    if n == 0:
-        return v
-    return v / n
-
-
 start_dir = normalize(next_start_pt - start_pt)
 finish_dir = normalize(end_pt - end_prev_pt)
 
@@ -196,35 +296,8 @@ start_line_b = tuple((start_pt - start_perp * line_half).astype(int))
 finish_line_a = tuple((end_pt + finish_perp * line_half).astype(int))
 finish_line_b = tuple((end_pt - finish_perp * line_half).astype(int))
 
-
-def point_is_inside_lane(x, y, mask):
-    if 0 <= x < mask.shape[1] and 0 <= y < mask.shape[0]:
-        return mask[y, x] > 0
-    return False
-
-
-def point_has_passed_line(point, line_point, direction_vec):
-    p = np.array(point, dtype=np.float32)
-    lp = np.array(line_point, dtype=np.float32)
-    return np.dot(p - lp, direction_vec) >= 0
-
-
-def reset_game():
-    return {
-        "game_running": False,
-        "timer_finished": False,
-        "start_time": 0.0,
-        "raw_time": 0.0,
-        "final_time": 0.0,
-        "outside_count": 0,
-        "was_inside_lane": True,
-        "was_before_finish": True,
-    }
-
-
 game = reset_game()
 push_event(make_state_payload("idle"))
-last_broadcast_penalty = -1
 
 try:
     while True:
@@ -252,9 +325,13 @@ try:
                         penalty_count=game["outside_count"],
                     ))
 
-        ret, frame = cap.read()
-        if not ret:
-            break
+        frame = read_next_frame(fallback_cap)
+        if frame is None:
+            time.sleep(FRAME_IDLE_SLEEP)
+            continue
+
+        if frame.shape[0] != cam_h or frame.shape[1] != cam_w:
+            frame = cv2.resize(frame, (cam_w, cam_h), interpolation=cv2.INTER_LINEAR)
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         green_mask = cv2.inRange(hsv, lower, upper)
@@ -380,7 +457,8 @@ try:
         if key == 27:
             break
 finally:
-    cap.release()
+    if fallback_cap is not None:
+        fallback_cap.release()
     cv2.destroyAllWindows()
     if server_loop is not None:
         server_loop.call_soon_threadsafe(server_loop.stop)

@@ -11,6 +11,12 @@ if (exitBtn) {
   });
 }
 
+const getBackendSocketUrl = () => {
+  const backendProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const backendHost = window.location.hostname || "localhost";
+  return `${backendProtocol}//${backendHost}:8765`;
+};
+
 const mount = document.getElementById("bg-canvas");
 
 if (mount) {
@@ -137,9 +143,7 @@ const resultPenaltySummaryEl = document.getElementById("resultPenaltySummary");
 const resultFinalTimeEl = document.getElementById("resultFinalTime");
 
 if (timerEl && startBtn && stopBtn && resetBtn) {
-  const backendProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const backendHost = window.location.hostname || "localhost";
-  const backendUrl = `${backendProtocol}//${backendHost}:8765`;
+  const backendUrl = getBackendSocketUrl();
 
   let startTime = 0;
   let elapsedBefore = 0;
@@ -528,6 +532,132 @@ const cameraSupported =
   typeof navigator.mediaDevices.getUserMedia === "function" &&
   typeof navigator.mediaDevices.enumerateDevices === "function";
 
+const frameBackendUrl = getBackendSocketUrl();
+const FRAME_STREAM_FPS = 8;
+const FRAME_STREAM_QUALITY = 0.6;
+const FRAME_STREAM_MAX_WIDTH = 640;
+const FRAME_STREAM_RECONNECT_MS = 1500;
+let frameSocket = null;
+let frameReconnectTimeoutId = null;
+let framePumpIntervalId = null;
+let manualFrameSocketClose = false;
+const frameCaptureCanvas = document.createElement("canvas");
+const frameCaptureContext = frameCaptureCanvas.getContext("2d", { alpha: false });
+
+const scheduleFrameReconnect = () => {
+  if (manualFrameSocketClose || framePumpIntervalId === null || frameReconnectTimeoutId !== null) return;
+
+  frameReconnectTimeoutId = window.setTimeout(() => {
+    frameReconnectTimeoutId = null;
+    connectFrameSocket();
+  }, FRAME_STREAM_RECONNECT_MS);
+};
+
+const connectFrameSocket = () => {
+  if (frameSocket && (frameSocket.readyState === WebSocket.OPEN || frameSocket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  frameSocket = new WebSocket(frameBackendUrl);
+
+  frameSocket.addEventListener("open", () => {
+    // No-op: we stream frames opportunistically when the socket is open.
+  });
+
+  frameSocket.addEventListener("error", (error) => {
+    console.error("Frame socket error:", error);
+  });
+
+  frameSocket.addEventListener("close", () => {
+    frameSocket = null;
+    scheduleFrameReconnect();
+  });
+};
+
+const stopFramePump = () => {
+  if (framePumpIntervalId !== null) {
+    window.clearInterval(framePumpIntervalId);
+    framePumpIntervalId = null;
+  }
+};
+
+const closeFrameSocket = () => {
+  manualFrameSocketClose = true;
+  stopFramePump();
+
+  if (frameReconnectTimeoutId !== null) {
+    window.clearTimeout(frameReconnectTimeoutId);
+    frameReconnectTimeoutId = null;
+  }
+
+  if (frameSocket && (frameSocket.readyState === WebSocket.OPEN || frameSocket.readyState === WebSocket.CONNECTING)) {
+    frameSocket.close();
+  }
+  frameSocket = null;
+};
+
+const getBackendFrameSource = () => {
+  if (slots.front.stream && slots.front.video) return slots.front;
+
+  if (programSelect) {
+    const selectedSlot = slots[programSelect.value];
+    if (selectedSlot && selectedSlot.stream && selectedSlot.video) return selectedSlot;
+  }
+
+  return Object.values(slots).find((slot) => slot.stream && slot.video) || null;
+};
+
+const sendFrameToBackend = () => {
+  if (!frameCaptureContext) return;
+  if (!frameSocket || frameSocket.readyState !== WebSocket.OPEN) return;
+
+  const sourceSlot = getBackendFrameSource();
+  if (!sourceSlot || !sourceSlot.video) return;
+
+  const sourceVideo = sourceSlot.video;
+  if (
+    sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+    sourceVideo.videoWidth < 2 ||
+    sourceVideo.videoHeight < 2
+  ) return;
+
+  let targetWidth = sourceVideo.videoWidth;
+  let targetHeight = sourceVideo.videoHeight;
+
+  if (targetWidth > FRAME_STREAM_MAX_WIDTH) {
+    const scale = FRAME_STREAM_MAX_WIDTH / targetWidth;
+    targetWidth = FRAME_STREAM_MAX_WIDTH;
+    targetHeight = Math.max(2, Math.round(targetHeight * scale));
+  }
+
+  if (frameCaptureCanvas.width !== targetWidth || frameCaptureCanvas.height !== targetHeight) {
+    frameCaptureCanvas.width = targetWidth;
+    frameCaptureCanvas.height = targetHeight;
+  }
+
+  frameCaptureContext.drawImage(sourceVideo, 0, 0, targetWidth, targetHeight);
+  const dataUrl = frameCaptureCanvas.toDataURL("image/jpeg", FRAME_STREAM_QUALITY);
+  const imageData = dataUrl.split(",", 2)[1];
+  if (!imageData) return;
+
+  frameSocket.send(JSON.stringify({
+    type: "frame",
+    image: imageData,
+    width: targetWidth,
+    height: targetHeight,
+    source: sourceSlot === slots.front ? "front" : "program",
+    timestamp: Date.now(),
+  }));
+};
+
+const startFramePump = () => {
+  manualFrameSocketClose = false;
+  connectFrameSocket();
+
+  if (framePumpIntervalId !== null) return;
+  framePumpIntervalId = window.setInterval(sendFrameToBackend, Math.round(1000 / FRAME_STREAM_FPS));
+};
+
 const updateStatus = (message) => {
   if (cameraStatus) cameraStatus.textContent = message;
 };
@@ -783,6 +913,7 @@ const stopAllCameras = () => {
   });
 
   if (mainVideo) mainVideo.srcObject = null;
+  stopFramePump();
   updateStatus("Cameras stopped.");
 };
 
@@ -818,11 +949,14 @@ const enableCameras = async () => {
 
     refreshProgramFeed();
     if (successCount > 0) {
-      updateStatus("Camera sources connected.");
+      startFramePump();
+      updateStatus("Camera sources connected. Python detection is receiving frames.");
     } else {
+      stopFramePump();
       updateStatus("No camera sources available. Check permissions and connected devices.");
     }
   } catch (error) {
+    stopFramePump();
     updateStatus("Cannot initialize sources. Check browser permissions and reload.");
     console.error(error);
   }
@@ -844,7 +978,8 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
       try {
         await startSlot(slotKey);
         refreshProgramFeed();
-        updateStatus("Camera source updated.");
+        startFramePump();
+        updateStatus("Camera source updated. Python detection feed updated.");
       } catch (error) {
         updateStatus("Failed to switch camera source.");
         console.error(error);
@@ -855,6 +990,10 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
   if (programSelect) {
     programSelect.addEventListener("change", refreshProgramFeed);
   }
+
+  window.addEventListener("beforeunload", () => {
+    closeFrameSocket();
+  });
 } else if (cameraStatus) {
   updateStatus("Camera controls are unavailable in this browser.");
 }
