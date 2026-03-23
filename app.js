@@ -392,8 +392,7 @@ const fillSelectOptions = (select, devices, slotKey) => {
   if (displayPreference && !preferredDevice) {
     const missingOption = document.createElement("option");
     missingOption.value = displayPreference.missingValue;
-    missingOption.textContent = `${displayPreference.displayName} (not detected)`;
-    missingOption.disabled = true;
+    missingOption.textContent = `${displayPreference.displayName} (connect this phone)`;
     select.appendChild(missingOption);
   }
 
@@ -467,6 +466,11 @@ const SLOT_DISPLAY_PREFERENCES = {
   },
 };
 
+const isMissingPreferenceValue = (slotKey, value) => {
+  const missingValue = SLOT_DISPLAY_PREFERENCES[slotKey]?.missingValue;
+  return Boolean(missingValue) && value === missingValue;
+};
+
 const normalizeDeviceLabel = (label) => (
   (label || "")
     .toLowerCase()
@@ -527,7 +531,14 @@ const findBestOptionIndex = (select, slotKey, used) => {
   for (let i = 0; i < select.options.length; i += 1) {
     const option = select.options[i];
     const value = option.value;
-    if (!value || value === SCREEN_SOURCE_ID || isRemoteSourceId(value) || option.disabled || used.has(value)) continue;
+    if (
+      !value ||
+      value === SCREEN_SOURCE_ID ||
+      isRemoteSourceId(value) ||
+      isMissingPreferenceValue(slotKey, value) ||
+      option.disabled ||
+      used.has(value)
+    ) continue;
 
     const score = getPreferenceScore(slotKey, option.textContent);
     if (score > bestScore) {
@@ -561,7 +572,13 @@ const applyDefaultSelections = () => {
     if (chosenIndex === -1) {
       for (let i = 0; i < select.options.length; i += 1) {
         const value = select.options[i].value;
-        if (!value || value === SCREEN_SOURCE_ID || select.options[i].disabled || used.has(value)) continue;
+        if (
+          !value ||
+          value === SCREEN_SOURCE_ID ||
+          isMissingPreferenceValue(key, value) ||
+          select.options[i].disabled ||
+          used.has(value)
+        ) continue;
         chosenIndex = i;
         break;
       }
@@ -655,8 +672,16 @@ const startSlot = async (slotKey) => {
     return;
   }
 
+  const resolvedDeviceId = isMissingPreferenceValue(slotKey, slot.select.value)
+    ? localVideoDevices.find((device) => matchesPreferredModel(slotKey, device.label))?.deviceId
+    : slot.select.value;
+
+  if (!resolvedDeviceId) {
+    throw new Error(`${SLOT_DISPLAY_PREFERENCES[slotKey]?.displayName || "Preferred camera"} is not available yet.`);
+  }
+
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { deviceId: { exact: slot.select.value } },
+    video: { deviceId: { exact: resolvedDeviceId } },
     audio: false,
   });
 
@@ -818,29 +843,31 @@ let currentJoinLink = "";
 const refreshJoinLink = async (attempt = 0) => {
   const appConfig = await fetchAppConfig();
 
-  const preferredJoinBaseUrl = appConfig?.publicBaseUrl || appConfig?.joinBaseUrl || window.location.origin;
-  currentJoinLink = buildJoinLink(preferredJoinBaseUrl, currentRoomCode);
+  const publicJoinBaseUrl = appConfig?.publicBaseUrl || "";
+  currentJoinLink = publicJoinBaseUrl ? buildJoinLink(publicJoinBaseUrl, currentRoomCode) : "";
 
   if (roomLinkField) {
-    roomLinkField.value = currentJoinLink;
+    roomLinkField.value = currentJoinLink || "Preparing public link...";
   }
 
-  if (appConfig?.publicBaseUrl) {
+  if (copyRoomLinkBtn) {
+    copyRoomLinkBtn.disabled = !currentJoinLink;
+  }
+
+  if (publicJoinBaseUrl) {
     updateRemoteStatus("Share this link with other phones.");
     return;
   }
 
-  if (appConfig?.lanBaseUrl && attempt < 15) {
-    updateRemoteStatus("Preparing a public phone link. If it takes too long, the current link is local-network only.");
+  if (attempt < 30) {
+    updateRemoteStatus("Preparing a working public phone link...");
     window.setTimeout(() => {
       refreshJoinLink(attempt + 1);
-    }, 2000);
+    }, 3000);
     return;
   }
 
-  if (currentJoinLink) {
-    updateRemoteStatus("Share this join link. If iPhone camera access is blocked, restart and wait for the public link.");
-  }
+  updateRemoteStatus("Public link did not finish loading. Restart `npm start` and wait for the link field to update.");
 };
 
 copyRoomLinkBtn?.addEventListener("click", () => {
@@ -850,6 +877,9 @@ copyRoomLinkBtn?.addEventListener("click", () => {
 renderRemoteRoster([]);
 remoteHost.connect();
 refreshJoinLink();
+window.setInterval(() => {
+  refreshJoinLink();
+}, 20000);
 
 if (cameraSupported && enableCamsBtn && stopCamsBtn) {
   enableCamsBtn.addEventListener("click", () => {

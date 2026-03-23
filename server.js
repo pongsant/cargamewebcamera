@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { networkInterfaces } from "node:os";
 import { extname, join, normalize } from "node:path";
 import localtunnel from "localtunnel";
@@ -9,6 +9,13 @@ import { WebSocketServer } from "ws";
 
 const port = Number.parseInt(process.env.PORT || "3000", 10);
 const rootDir = process.cwd();
+const preferredTunnelSubdomain = String(
+  process.env.TUNNEL_SUBDOMAIN ||
+  `webcarcamera-${createHash("sha1").update(rootDir).digest("hex").slice(0, 8)}`
+)
+  .toLowerCase()
+  .replace(/[^a-z0-9-]/g, "")
+  .slice(0, 63);
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -252,7 +259,10 @@ const startPublicTunnel = async () => {
   if (publicBaseUrl || process.env.DISABLE_TUNNEL === "1") return;
 
   try {
-    tunnel = await localtunnel({ port });
+    tunnel = await localtunnel({
+      port,
+      subdomain: preferredTunnelSubdomain,
+    });
     publicBaseUrl = String(tunnel.url || "").trim().replace(/\/+$/, "");
     if (publicBaseUrl) {
       console.log(`Public join link ready at ${publicBaseUrl}`);
@@ -265,7 +275,24 @@ const startPublicTunnel = async () => {
       }
     });
   } catch (error) {
-    console.warn(`Public tunnel could not start: ${error.message}`);
+    console.warn(`Preferred public tunnel could not start: ${error.message}`);
+
+    try {
+      tunnel = await localtunnel({ port });
+      publicBaseUrl = String(tunnel.url || "").trim().replace(/\/+$/, "");
+      if (publicBaseUrl) {
+        console.log(`Fallback public join link ready at ${publicBaseUrl}`);
+      }
+
+      tunnel.on("close", () => {
+        tunnel = null;
+        if (!process.env.PUBLIC_BASE_URL) {
+          publicBaseUrl = "";
+        }
+      });
+    } catch (fallbackError) {
+      console.warn(`Public tunnel could not start: ${fallbackError.message}`);
+    }
   }
 };
 
