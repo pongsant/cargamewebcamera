@@ -520,6 +520,7 @@ const stopCamsBtn = document.getElementById("stopCamsBtn");
 const cameraStatus = document.getElementById("cameraStatus");
 const programSelect = document.getElementById("programSelect");
 const mainVideo = document.getElementById("mainVideo");
+const frameStreamStatusEl = document.getElementById("frameStreamStatus");
 
 const slots = {
   back: { select: document.getElementById("backSelect"), video: document.getElementById("backVideo"), stream: null },
@@ -544,9 +545,14 @@ let manualFrameSocketClose = false;
 const frameCaptureCanvas = document.createElement("canvas");
 const frameCaptureContext = frameCaptureCanvas.getContext("2d", { alpha: false });
 
+const setFrameStreamStatus = (message) => {
+  if (frameStreamStatusEl) frameStreamStatusEl.textContent = message;
+};
+
 const scheduleFrameReconnect = () => {
   if (manualFrameSocketClose || framePumpIntervalId === null || frameReconnectTimeoutId !== null) return;
 
+  setFrameStreamStatus("Reconnecting…");
   frameReconnectTimeoutId = window.setTimeout(() => {
     frameReconnectTimeoutId = null;
     connectFrameSocket();
@@ -561,15 +567,20 @@ const connectFrameSocket = () => {
   frameSocket = new WebSocket(frameBackendUrl);
 
   frameSocket.addEventListener("open", () => {
-    // No-op: we stream frames opportunistically when the socket is open.
+    setFrameStreamStatus("Connected");
   });
 
   frameSocket.addEventListener("error", (error) => {
+    setFrameStreamStatus("Error");
     console.error("Frame socket error:", error);
   });
 
   frameSocket.addEventListener("close", () => {
     frameSocket = null;
+    if (manualFrameSocketClose) {
+      setFrameStreamStatus("Stopped");
+      return;
+    }
     scheduleFrameReconnect();
   });
 };
@@ -594,6 +605,7 @@ const closeFrameSocket = () => {
     frameSocket.close();
   }
   frameSocket = null;
+  setFrameStreamStatus("Stopped");
 };
 
 const getBackendFrameSource = () => {
@@ -652,6 +664,7 @@ const sendFrameToBackend = () => {
 
 const startFramePump = () => {
   manualFrameSocketClose = false;
+  setFrameStreamStatus("Connecting…");
   connectFrameSocket();
 
   if (framePumpIntervalId !== null) return;
@@ -661,6 +674,8 @@ const startFramePump = () => {
 const updateStatus = (message) => {
   if (cameraStatus) cameraStatus.textContent = message;
 };
+
+setFrameStreamStatus("Waiting…");
 
 const stopStream = (stream) => {
   if (!stream) return;
