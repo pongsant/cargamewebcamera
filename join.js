@@ -5,6 +5,7 @@ import {
 } from "./rtc-shared.js";
 
 const roomInput = document.getElementById("roomInput");
+const phoneRoomNote = document.getElementById("phoneRoomNote");
 const cameraNameInput = document.getElementById("cameraNameInput");
 const facingModeSelect = document.getElementById("facingModeSelect");
 const joinCameraBtn = document.getElementById("joinCameraBtn");
@@ -16,6 +17,11 @@ const pageParams = new URLSearchParams(window.location.search);
 const initialRoom = normalizeRoomCode(pageParams.get("room"));
 if (roomInput && initialRoom) {
   roomInput.value = initialRoom;
+}
+if (phoneRoomNote) {
+  phoneRoomNote.textContent = initialRoom
+    ? "Join link ready. Tap Join Camera to start streaming."
+    : "This link is missing room info. Ask for a new join link from the dashboard.";
 }
 if (cameraNameInput) {
   cameraNameInput.value = "Phone Cam";
@@ -139,7 +145,7 @@ const leaveRoom = () => {
 const connectToRoom = async () => {
   const roomId = normalizeRoomCode(roomInput?.value);
   if (!roomId) {
-    setStatus("Enter the 6-character room code first.");
+    setStatus("This join link is missing room info. Ask for a new link from the dashboard.");
     return;
   }
 

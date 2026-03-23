@@ -308,9 +308,7 @@ const cameraStatus = document.getElementById("cameraStatus");
 const remoteStatus = document.getElementById("remoteStatus");
 const programSelect = document.getElementById("programSelect");
 const mainVideo = document.getElementById("mainVideo");
-const roomCodeField = document.getElementById("roomCodeField");
 const roomLinkField = document.getElementById("roomLinkField");
-const copyRoomCodeBtn = document.getElementById("copyRoomCodeBtn");
 const copyRoomLinkBtn = document.getElementById("copyRoomLinkBtn");
 const remoteRoster = document.getElementById("remoteRoster");
 
@@ -774,6 +772,24 @@ const copyText = async (value, successMessage) => {
   }
 };
 
+const buildJoinLink = (baseUrl, roomCode) => {
+  if (!baseUrl) return "";
+  const normalizedBaseUrl = String(baseUrl).trim().replace(/\/+$/, "");
+  return `${normalizedBaseUrl}/phone.html?room=${roomCode}`;
+};
+
+const fetchAppConfig = async () => {
+  if (!window.location.protocol.startsWith("http")) return null;
+
+  try {
+    const response = await fetch("/app-config.json", { cache: "no-store" });
+    if (!response.ok) return null;
+    return response.json();
+  } catch (error) {
+    return null;
+  }
+};
+
 const roomParams = new URLSearchParams(window.location.search);
 const currentRoomCode = normalizeRoomCode(roomParams.get("room")) || createRoomCode();
 if (window.location.protocol.startsWith("http")) {
@@ -797,24 +813,43 @@ const remoteHost = createRemoteRoomHost({
   },
 });
 
-if (roomCodeField) {
-  roomCodeField.value = currentRoomCode;
-}
+let currentJoinLink = "";
 
-if (roomLinkField) {
-  roomLinkField.value = remoteHost.getJoinUrl();
-}
+const refreshJoinLink = async (attempt = 0) => {
+  const appConfig = await fetchAppConfig();
 
-copyRoomCodeBtn?.addEventListener("click", () => {
-  copyText(currentRoomCode, "Room code copied.");
-});
+  const preferredJoinBaseUrl = appConfig?.publicBaseUrl || appConfig?.joinBaseUrl || window.location.origin;
+  currentJoinLink = buildJoinLink(preferredJoinBaseUrl, currentRoomCode);
+
+  if (roomLinkField) {
+    roomLinkField.value = currentJoinLink;
+  }
+
+  if (appConfig?.publicBaseUrl) {
+    updateRemoteStatus("Share this link with other phones.");
+    return;
+  }
+
+  if (appConfig?.lanBaseUrl && attempt < 15) {
+    updateRemoteStatus("Preparing a public phone link. If it takes too long, the current link is local-network only.");
+    window.setTimeout(() => {
+      refreshJoinLink(attempt + 1);
+    }, 2000);
+    return;
+  }
+
+  if (currentJoinLink) {
+    updateRemoteStatus("Share this join link. If iPhone camera access is blocked, restart and wait for the public link.");
+  }
+};
 
 copyRoomLinkBtn?.addEventListener("click", () => {
-  copyText(remoteHost.getJoinUrl(), "Join link copied.");
+  copyText(currentJoinLink, "Join link copied.");
 });
 
 renderRemoteRoster([]);
 remoteHost.connect();
+refreshJoinLink();
 
 if (cameraSupported && enableCamsBtn && stopCamsBtn) {
   enableCamsBtn.addEventListener("click", () => {

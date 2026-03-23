@@ -2,7 +2,9 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { networkInterfaces } from "node:os";
 import { extname, join, normalize } from "node:path";
+import localtunnel from "localtunnel";
 import { WebSocketServer } from "ws";
 
 const port = Number.parseInt(process.env.PORT || "3000", 10);
@@ -20,6 +22,31 @@ const MIME_TYPES = {
 };
 
 const rooms = new Map();
+let tunnel = null;
+let publicBaseUrl = String(process.env.PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
+
+const getLanBaseUrl = () => {
+  const interfaces = networkInterfaces();
+
+  for (const addresses of Object.values(interfaces)) {
+    for (const address of addresses || []) {
+      if (address.family === "IPv4" && !address.internal) {
+        return `http://${address.address}:${port}`;
+      }
+    }
+  }
+
+  return "";
+};
+
+const getJoinBaseUrl = () => publicBaseUrl || getLanBaseUrl() || `http://localhost:${port}`;
+
+const getAppConfig = () => ({
+  joinBaseUrl: getJoinBaseUrl(),
+  lanBaseUrl: getLanBaseUrl(),
+  publicBaseUrl,
+  prefersPublicUrl: Boolean(publicBaseUrl),
+});
 
 const sendJson = (socket, payload) => {
   if (!socket || socket.readyState !== 1) return;
@@ -55,6 +82,13 @@ const fileFromPathname = (pathname) => {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+
+  if (url.pathname === "/app-config.json") {
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(getAppConfig()));
+    return;
+  }
+
   const relativePath = fileFromPathname(url.pathname);
   const absolutePath = join(rootDir, relativePath);
 
@@ -214,6 +248,50 @@ wss.on("connection", (socket) => {
   });
 });
 
-server.listen(port, () => {
+const startPublicTunnel = async () => {
+  if (publicBaseUrl || process.env.DISABLE_TUNNEL === "1") return;
+
+  try {
+    tunnel = await localtunnel({ port });
+    publicBaseUrl = String(tunnel.url || "").trim().replace(/\/+$/, "");
+    if (publicBaseUrl) {
+      console.log(`Public join link ready at ${publicBaseUrl}`);
+    }
+
+    tunnel.on("close", () => {
+      tunnel = null;
+      if (!process.env.PUBLIC_BASE_URL) {
+        publicBaseUrl = "";
+      }
+    });
+  } catch (error) {
+    console.warn(`Public tunnel could not start: ${error.message}`);
+  }
+};
+
+const shutdown = async () => {
+  if (tunnel) {
+    try {
+      await tunnel.close();
+    } catch (error) {
+      // Ignore tunnel shutdown errors.
+    }
+  }
+  server.close(() => {
+    process.exit(0);
+  });
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
+server.listen(port, async () => {
   console.log(`Race control server running at http://localhost:${port}`);
+
+  const lanBaseUrl = getLanBaseUrl();
+  if (lanBaseUrl) {
+    console.log(`Local network address: ${lanBaseUrl}`);
+  }
+
+  await startPublicTunnel();
 });

@@ -189,10 +189,5 @@ export const createRemoteRoomHost = ({
 
   return {
     connect,
-    getJoinUrl: () => (
-      window.location.origin && window.location.origin !== "null"
-        ? `${window.location.origin}/phone.html?room=${roomId}`
-        : ""
-    ),
   };
 };
