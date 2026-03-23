@@ -17,6 +17,7 @@ PENALTY_SECONDS = 1.0
 FRAME_QUEUE_MAX = 4
 FRAME_IDLE_SLEEP = 0.01
 WEBSOCKET_MAX_SIZE = 8_000_000
+WAIT_FOR_BROWSER_FIRST_FRAME_SECONDS = 10.0
 
 command_queue = queue.Queue()
 frame_queue = queue.Queue(maxsize=FRAME_QUEUE_MAX)
@@ -69,6 +70,15 @@ def push_event(payload):
     asyncio.run_coroutine_threadsafe(broadcast(payload), server_loop)
 
 
+def build_frame_packet(frame, *, source_label, source_key, is_web):
+    return {
+        "frame": frame,
+        "sourceLabel": source_label,
+        "sourceKey": source_key,
+        "isWeb": is_web,
+    }
+
+
 def enqueue_frame_from_payload(payload):
     image_payload = payload.get("image")
     if not isinstance(image_payload, str) or not image_payload:
@@ -84,13 +94,21 @@ def enqueue_frame_from_payload(payload):
     if frame is None:
         return False, "Decoded frame is empty."
 
+    source_label = str(payload.get("sourceLabel") or "Browser Camera").strip()[:120]
+    source_key = str(payload.get("source") or "browser").strip()[:40]
+
     while frame_queue.full():
         try:
             frame_queue.get_nowait()
         except queue.Empty:
             break
 
-    frame_queue.put_nowait(frame)
+    frame_queue.put_nowait(build_frame_packet(
+        frame,
+        source_label=source_label,
+        source_key=source_key,
+        is_web=True,
+    ))
     return True, None
 
 
@@ -189,19 +207,19 @@ def reset_game():
 
 
 def pop_latest_browser_frame():
-    latest_frame = None
+    latest_packet = None
     while True:
         try:
-            latest_frame = frame_queue.get_nowait()
+            latest_packet = frame_queue.get_nowait()
         except queue.Empty:
             break
-    return latest_frame
+    return latest_packet
 
 
 def read_next_frame(capture):
-    frame = pop_latest_browser_frame()
-    if frame is not None:
-        return frame
+    packet = pop_latest_browser_frame()
+    if packet is not None:
+        return packet
 
     if capture is None:
         return None
@@ -209,7 +227,12 @@ def read_next_frame(capture):
     ret, frame = capture.read()
     if not ret:
         return None
-    return frame
+    return build_frame_packet(
+        frame,
+        source_label="Local Camera",
+        source_key="local",
+        is_web=False,
+    )
 
 
 server_thread = threading.Thread(target=start_websocket_server, daemon=True)
@@ -248,11 +271,27 @@ GUIDE_W = 640
 GUIDE_H = 360
 
 print("Waiting for first frame from website (Chrome/iPhone) or local camera...")
-frame = None
-while frame is None:
-    frame = read_next_frame(fallback_cap)
-    if frame is None:
-        time.sleep(FRAME_IDLE_SLEEP)
+frame_packet = None
+
+if fallback_cap is None:
+    while frame_packet is None:
+        frame_packet = pop_latest_browser_frame()
+        if frame_packet is None:
+            time.sleep(FRAME_IDLE_SLEEP)
+else:
+    wait_deadline = time.time() + WAIT_FOR_BROWSER_FIRST_FRAME_SECONDS
+    while frame_packet is None and time.time() < wait_deadline:
+        frame_packet = pop_latest_browser_frame()
+        if frame_packet is None:
+            time.sleep(FRAME_IDLE_SLEEP)
+
+    while frame_packet is None:
+        frame_packet = read_next_frame(fallback_cap)
+        if frame_packet is None:
+            time.sleep(FRAME_IDLE_SLEEP)
+
+frame = frame_packet["frame"]
+print(f"Detection source selected: {frame_packet['sourceLabel']}")
 
 cam_h, cam_w = frame.shape[:2]
 
@@ -298,6 +337,7 @@ finish_line_b = tuple((end_pt - finish_perp * line_half).astype(int))
 
 game = reset_game()
 push_event(make_state_payload("idle"))
+last_source_label = ""
 
 try:
     while True:
@@ -325,10 +365,20 @@ try:
                         penalty_count=game["outside_count"],
                     ))
 
-        frame = read_next_frame(fallback_cap)
-        if frame is None:
+        frame_packet = read_next_frame(fallback_cap)
+        if frame_packet is None:
             time.sleep(FRAME_IDLE_SLEEP)
             continue
+
+        frame = frame_packet["frame"]
+        source_label = str(frame_packet.get("sourceLabel") or "Unknown source")
+        source_transport = "WEB" if frame_packet.get("isWeb") else "LOCAL"
+        if source_label != last_source_label:
+            push_event({
+                "type": "status",
+                "message": f"Python detection source: {source_label}",
+            })
+            last_source_label = source_label
 
         if frame.shape[0] != cam_h or frame.shape[1] != cam_w:
             frame = cv2.resize(frame, (cam_w, cam_h), interpolation=cv2.INTER_LINEAR)
@@ -441,6 +491,7 @@ try:
         else:
             cv2.putText(frame, "Press Start on the website", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
+        cv2.putText(frame, f"SOURCE ({source_transport}): {source_label}", (20, cam_h - 55), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 220, 120), 2)
         cv2.putText(frame, f"PENALTY COUNT: {game['outside_count']}", (20, cam_h - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
         cv2.putText(frame, "START", (start_line_a[0] - 20, start_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         cv2.putText(frame, "FINISH", (finish_line_a[0] - 30, finish_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)

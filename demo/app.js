@@ -515,6 +515,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   connectBackend();
 }
 
+const SCREEN_SOURCE_ID = "__screen_share__";
 const enableCamsBtn = document.getElementById("enableCamsBtn");
 const stopCamsBtn = document.getElementById("stopCamsBtn");
 const cameraStatus = document.getElementById("cameraStatus");
@@ -532,6 +533,11 @@ const cameraSupported =
   Boolean(navigator.mediaDevices) &&
   typeof navigator.mediaDevices.getUserMedia === "function" &&
   typeof navigator.mediaDevices.enumerateDevices === "function";
+const screenShareSupported =
+  Boolean(navigator.mediaDevices) &&
+  typeof navigator.mediaDevices.getDisplayMedia === "function";
+const sourceSupported = cameraSupported || screenShareSupported;
+let localVideoDevices = [];
 
 const frameBackendUrl = getBackendSocketUrl();
 const FRAME_STREAM_FPS = 8;
@@ -545,8 +551,368 @@ let manualFrameSocketClose = false;
 const frameCaptureCanvas = document.createElement("canvas");
 const frameCaptureContext = frameCaptureCanvas.getContext("2d", { alpha: false });
 
+const FRONT_LABEL_HINTS = [
+  "iphone",
+  "front",
+  "continuity",
+  "ios",
+  "phone",
+];
+
+const TOP_LABEL_HINTS = [
+  "logitech",
+  "webcam",
+  "usb",
+  "brio",
+  "c920",
+  "c922",
+  "c930",
+];
+
+const SLOT_DEVICE_PREFERENCES = {
+  front: [
+    "prum iphone 17 pro",
+    "iphone 17 pro",
+    "prum iphone",
+    "continuity camera",
+    "continuity",
+    "iphone",
+  ],
+  top: [
+    "prum iphone 17 pro",
+    "iphone 17 pro",
+    "prum iphone",
+    "continuity camera",
+    "continuity",
+    "iphone",
+    "iphone 14 pro",
+  ],
+};
+
+const SLOT_DISPLAY_PREFERENCES = {
+  front: {
+    displayName: "Prum iPhone 17 Pro",
+    missingValue: "__missing_front_iphone_17_pro__",
+  },
+};
+
 const setFrameStreamStatus = (message) => {
   if (frameStreamStatusEl) frameStreamStatusEl.textContent = message;
+};
+
+const updateStatus = (message) => {
+  if (cameraStatus) cameraStatus.textContent = message;
+};
+
+const stopStream = (stream) => {
+  if (!stream) return;
+  for (const track of stream.getTracks()) track.stop();
+};
+
+const setSlotStream = (slotKey, stream) => {
+  const slot = slots[slotKey];
+  if (!slot) return;
+  slot.stream = stream;
+  if (slot.video) {
+    slot.video.srcObject = stream;
+    slot.video.play().catch(() => {});
+  }
+};
+
+const refreshProgramFeed = () => {
+  if (!mainVideo || !programSelect) return;
+  const selected = slots[programSelect.value];
+  mainVideo.srcObject = selected ? selected.stream : null;
+};
+
+const normalizeDeviceLabel = (label) => (
+  (label || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+);
+
+const compactDeviceLabel = (label) => normalizeDeviceLabel(label).replace(/\s+/g, "");
+
+const matchesPreferredModel = (slotKey, label) => {
+  const normalized = normalizeDeviceLabel(label);
+  const compactNormalized = compactDeviceLabel(label);
+  if (!normalized) return false;
+
+  const preferredModels = SLOT_DEVICE_PREFERENCES[slotKey] || [];
+  return preferredModels.some((modelHint) => {
+    const normalizedHint = normalizeDeviceLabel(modelHint);
+    const compactHint = compactDeviceLabel(modelHint);
+    return normalized.includes(normalizedHint) || compactNormalized.includes(compactHint);
+  });
+};
+
+const isMissingPreferenceValue = (slotKey, value) => {
+  const missingValue = SLOT_DISPLAY_PREFERENCES[slotKey]?.missingValue;
+  return Boolean(missingValue) && value === missingValue;
+};
+
+const getPreferenceScore = (slotKey, label) => {
+  const normalized = normalizeDeviceLabel(label);
+  if (!normalized) return 0;
+
+  if (matchesPreferredModel(slotKey, label)) return 100;
+
+  if (slotKey === "front") {
+    let score = 0;
+    FRONT_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 2;
+    });
+    if (normalized.includes("14 pro")) score -= 10;
+    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
+    if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
+    return score;
+  }
+
+  if (slotKey === "top") {
+    let score = 0;
+    FRONT_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 2;
+    });
+    TOP_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 1;
+    });
+    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
+    return score;
+  }
+
+  return 0;
+};
+
+const listVideoDevices = async () => {
+  if (!cameraSupported) return [];
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  return devices.filter((device) => device.kind === "videoinput");
+};
+
+const addScreenShareEndedHandler = (stream) => {
+  const [videoTrack] = stream.getVideoTracks();
+  if (!videoTrack) return;
+
+  videoTrack.addEventListener("ended", () => {
+    Object.values(slots).forEach((slot) => {
+      if (slot.select?.value === SCREEN_SOURCE_ID) {
+        stopStream(slot.stream);
+        slot.stream = null;
+        if (slot.video) slot.video.srcObject = null;
+      }
+    });
+    refreshProgramFeed();
+    updateStatus("FaceTime screen share ended. Choose Screen / Window again to resume.");
+  }, { once: true });
+};
+
+const fillSelectOptions = (select, devices, slotKey) => {
+  if (!select) return;
+  const previous = select.value;
+  select.innerHTML = "";
+
+  const displayPreference = SLOT_DISPLAY_PREFERENCES[slotKey];
+  const preferredDevice = displayPreference
+    ? devices.find((device) => matchesPreferredModel(slotKey, device.label))
+    : null;
+
+  if (displayPreference && !preferredDevice) {
+    const missingOption = document.createElement("option");
+    missingOption.value = displayPreference.missingValue;
+    missingOption.textContent = `${displayPreference.displayName} (connect this phone)`;
+    select.appendChild(missingOption);
+  }
+
+  if (screenShareSupported) {
+    const screenOption = document.createElement("option");
+    screenOption.value = SCREEN_SOURCE_ID;
+    screenOption.textContent = "Screen / Window (FaceTime)";
+    select.appendChild(screenOption);
+  }
+
+  devices.forEach((device, index) => {
+    const option = document.createElement("option");
+    option.value = device.deviceId;
+    if (displayPreference && preferredDevice && preferredDevice.deviceId === device.deviceId) {
+      option.textContent = displayPreference.displayName;
+    } else {
+      option.textContent = device.label || `Camera ${index + 1}`;
+    }
+    select.appendChild(option);
+  });
+
+  if (devices.length === 0 && !screenShareSupported) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No source found";
+    select.appendChild(option);
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+  if (previous && Array.from(select.options).some((option) => option.value === previous && !option.disabled)) {
+    select.value = previous;
+  }
+};
+
+const findBestOptionIndex = (select, slotKey) => {
+  let bestIndex = -1;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (let i = 0; i < select.options.length; i += 1) {
+    const option = select.options[i];
+    const value = option.value;
+    if (
+      !value ||
+      value === SCREEN_SOURCE_ID ||
+      isMissingPreferenceValue(slotKey, value) ||
+      option.disabled
+    ) continue;
+
+    const score = getPreferenceScore(slotKey, option.textContent);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  return bestIndex;
+};
+
+const applyDefaultSelections = () => {
+  const keys = ["front", "top", "back"];
+
+  keys.forEach((key) => {
+    const select = slots[key].select;
+    if (!select || !select.options.length || !select.options[0].value) return;
+
+    const currentValue = select.value;
+    if (
+      currentValue &&
+      Array.from(select.options).some((option) => option.value === currentValue && !option.disabled)
+    ) {
+      return;
+    }
+
+    let chosenIndex = findBestOptionIndex(select, key);
+
+    if (chosenIndex === -1) {
+      for (let i = 0; i < select.options.length; i += 1) {
+        const value = select.options[i].value;
+        if (
+          !value ||
+          value === SCREEN_SOURCE_ID ||
+          isMissingPreferenceValue(key, value) ||
+          select.options[i].disabled
+        ) continue;
+        chosenIndex = i;
+        break;
+      }
+    }
+
+    if (chosenIndex === -1) {
+      for (let i = 0; i < select.options.length; i += 1) {
+        const value = select.options[i].value;
+        if (!value || select.options[i].disabled) continue;
+        chosenIndex = i;
+        break;
+      }
+    }
+
+    if (chosenIndex === -1) chosenIndex = 0;
+
+    select.value = select.options[chosenIndex].value;
+  });
+};
+
+const refreshSourceOptions = () => {
+  fillSelectOptions(slots.back.select, localVideoDevices, "back");
+  fillSelectOptions(slots.front.select, localVideoDevices, "front");
+  fillSelectOptions(slots.top.select, localVideoDevices, "top");
+  applyDefaultSelections();
+};
+
+const getMatchingSourceSlot = (slotKey, sourceValue) => Object.entries(slots).find(([key, current]) => (
+  key !== slotKey &&
+  current.select &&
+  current.select.value === sourceValue &&
+  current.stream
+));
+
+const findPreferredDeviceId = (slotKey) => {
+  const directMatch = localVideoDevices.find((device) => matchesPreferredModel(slotKey, device.label));
+  if (directMatch) return directMatch.deviceId;
+
+  const fallback = localVideoDevices
+    .filter((device) => getPreferenceScore(slotKey, device.label) > 0)
+    .sort((a, b) => getPreferenceScore(slotKey, b.label) - getPreferenceScore(slotKey, a.label))[0];
+  return fallback?.deviceId || "";
+};
+
+const startScreenShareSlot = (slotKey) => {
+  const slot = slots[slotKey];
+  if (!slot || !slot.select || !slot.video || slot.select.value !== SCREEN_SOURCE_ID) {
+    return Promise.resolve();
+  }
+
+  stopStream(slot.stream);
+  slot.stream = null;
+
+  const sameSourceSlot = getMatchingSourceSlot(slotKey, SCREEN_SOURCE_ID);
+  if (sameSourceSlot) {
+    setSlotStream(slotKey, sameSourceSlot[1].stream.clone());
+    return Promise.resolve();
+  }
+
+  if (!screenShareSupported) {
+    return Promise.reject(new Error("Screen sharing is not supported in this browser."));
+  }
+
+  return navigator.mediaDevices.getDisplayMedia({
+    video: true,
+    audio: false,
+  }).then((stream) => {
+    addScreenShareEndedHandler(stream);
+    setSlotStream(slotKey, stream);
+  });
+};
+
+const startSlot = async (slotKey) => {
+  const slot = slots[slotKey];
+  if (!slot || !slot.select || !slot.video || !slot.select.value) return;
+
+  stopStream(slot.stream);
+  slot.stream = null;
+
+  const sameSourceSlot = getMatchingSourceSlot(slotKey, slot.select.value);
+  if (sameSourceSlot) {
+    setSlotStream(slotKey, sameSourceSlot[1].stream.clone());
+    return;
+  }
+
+  if (slot.select.value === SCREEN_SOURCE_ID) {
+    await startScreenShareSlot(slotKey);
+    return;
+  }
+
+  const resolvedDeviceId = isMissingPreferenceValue(slotKey, slot.select.value)
+    ? findPreferredDeviceId(slotKey)
+    : slot.select.value;
+
+  if (!resolvedDeviceId) {
+    throw new Error(`${SLOT_DISPLAY_PREFERENCES[slotKey]?.displayName || "Preferred camera"} is not available yet.`);
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { deviceId: { exact: resolvedDeviceId } },
+    audio: false,
+  });
+
+  setSlotStream(slotKey, stream);
 };
 
 const scheduleFrameReconnect = () => {
@@ -651,13 +1017,16 @@ const sendFrameToBackend = () => {
   const dataUrl = frameCaptureCanvas.toDataURL("image/jpeg", FRAME_STREAM_QUALITY);
   const imageData = dataUrl.split(",", 2)[1];
   if (!imageData) return;
+  const sourceLabel = sourceSlot.select?.selectedOptions?.[0]?.textContent?.trim()
+    || (sourceSlot === slots.front ? "Prum iPhone 17 Pro" : "Camera Source");
 
   frameSocket.send(JSON.stringify({
     type: "frame",
     image: imageData,
     width: targetWidth,
     height: targetHeight,
-    source: sourceSlot === slots.front ? "front" : "program",
+    source: sourceSlot === slots.front ? "front" : (programSelect?.value || "auto"),
+    sourceLabel,
     timestamp: Date.now(),
   }));
 };
@@ -671,255 +1040,6 @@ const startFramePump = () => {
   framePumpIntervalId = window.setInterval(sendFrameToBackend, Math.round(1000 / FRAME_STREAM_FPS));
 };
 
-const updateStatus = (message) => {
-  if (cameraStatus) cameraStatus.textContent = message;
-};
-
-setFrameStreamStatus("Waiting…");
-
-const stopStream = (stream) => {
-  if (!stream) return;
-  for (const track of stream.getTracks()) track.stop();
-};
-
-const refreshProgramFeed = () => {
-  if (!mainVideo || !programSelect) return;
-  const selected = slots[programSelect.value];
-  mainVideo.srcObject = selected ? selected.stream : null;
-};
-
-const listVideoDevices = async () => {
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  return devices.filter((device) => device.kind === "videoinput");
-};
-
-const fillSelectOptions = (select, devices, slotKey) => {
-  if (!select) return;
-  const previous = select.value;
-  select.innerHTML = "";
-
-  const displayPreference = SLOT_DISPLAY_PREFERENCES[slotKey];
-  const preferredDevice = displayPreference
-    ? devices.find((device) => matchesPreferredModel(slotKey, device.label))
-    : null;
-
-  if (displayPreference && !preferredDevice) {
-    const missingOption = document.createElement("option");
-    missingOption.value = displayPreference.missingValue;
-    missingOption.textContent = `${displayPreference.displayName} (not detected)`;
-    missingOption.disabled = true;
-    select.appendChild(missingOption);
-  }
-
-  devices.forEach((device, index) => {
-    const option = document.createElement("option");
-    option.value = device.deviceId;
-    if (displayPreference && preferredDevice && preferredDevice.deviceId === device.deviceId) {
-      option.textContent = displayPreference.displayName;
-    } else {
-      option.textContent = device.label || `Camera ${index + 1}`;
-    }
-    select.appendChild(option);
-  });
-
-  if (devices.length === 0) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "No camera found";
-    select.appendChild(option);
-    select.disabled = true;
-    return;
-  }
-
-  select.disabled = false;
-  if (previous && devices.some((device) => device.deviceId === previous)) {
-    select.value = previous;
-  }
-};
-
-const FRONT_LABEL_HINTS = [
-  "iphone",
-  "front",
-  "continuity",
-  "ios",
-  "phone",
-];
-
-const TOP_LABEL_HINTS = [
-  "logitech",
-  "webcam",
-  "usb",
-  "brio",
-  "c920",
-  "c922",
-  "c930",
-];
-
-const SLOT_DEVICE_PREFERENCES = {
-  front: [
-    "prum iphone 17 pro",
-    "iphone 17 pro",
-    "prum iphone",
-    "continuity camera",
-    "continuity",
-    "iphone",
-  ],
-  top: [
-    "prum iphone 17 pro",
-    "iphone 17 pro",
-    "prum iphone",
-    "continuity camera",
-    "continuity",
-    "iphone",
-    "iphone 14 pro",
-  ],
-};
-
-const SLOT_DISPLAY_PREFERENCES = {
-  front: {
-    displayName: "Prum iPhone 17 Pro",
-    missingValue: "__missing_front_iphone_17_pro__",
-  },
-};
-
-const normalizeDeviceLabel = (label) => (
-  (label || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-);
-
-const compactDeviceLabel = (label) => normalizeDeviceLabel(label).replace(/\s+/g, "");
-
-const matchesPreferredModel = (slotKey, label) => {
-  const normalized = normalizeDeviceLabel(label);
-  const compactNormalized = compactDeviceLabel(label);
-  if (!normalized) return false;
-
-  const preferredModels = SLOT_DEVICE_PREFERENCES[slotKey] || [];
-  return preferredModels.some((modelHint) => {
-    const normalizedHint = normalizeDeviceLabel(modelHint);
-    const compactHint = compactDeviceLabel(modelHint);
-    return normalized.includes(normalizedHint) || compactNormalized.includes(compactHint);
-  });
-};
-
-const getPreferenceScore = (slotKey, label) => {
-  const normalized = normalizeDeviceLabel(label);
-  if (!normalized) return 0;
-
-  if (matchesPreferredModel(slotKey, label)) return 100;
-
-  if (slotKey === "front") {
-    let score = 0;
-    FRONT_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 2;
-    });
-    if (normalized.includes("14 pro")) score -= 10;
-    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
-    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
-    if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
-    return score;
-  }
-
-  if (slotKey === "top") {
-    let score = 0;
-    FRONT_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 2;
-    });
-    TOP_LABEL_HINTS.forEach((hint) => {
-      if (normalized.includes(hint)) score += 1;
-    });
-    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
-    if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
-    return score;
-  }
-
-  return 0;
-};
-
-const findBestOptionIndex = (select, slotKey) => {
-  let bestIndex = -1;
-  let bestScore = Number.NEGATIVE_INFINITY;
-
-  for (let i = 0; i < select.options.length; i += 1) {
-    const option = select.options[i];
-    const value = option.value;
-    if (!value || option.disabled) continue;
-
-    const score = getPreferenceScore(slotKey, option.textContent);
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = i;
-    }
-  }
-
-  return bestIndex;
-};
-
-const applyDefaultSelections = () => {
-  const keys = ["front", "top", "back"];
-
-  keys.forEach((key) => {
-    const select = slots[key].select;
-    if (!select || !select.options.length || !select.options[0].value) return;
-
-    const currentValue = select.value;
-    if (
-      currentValue &&
-      Array.from(select.options).some((option) => option.value === currentValue && !option.disabled)
-    ) {
-      return;
-    }
-
-    let chosenIndex = findBestOptionIndex(select, key);
-
-    if (chosenIndex === -1) {
-      for (let i = 0; i < select.options.length; i += 1) {
-        const value = select.options[i].value;
-        if (!value || select.options[i].disabled) continue;
-        chosenIndex = i;
-        break;
-      }
-    }
-
-    if (chosenIndex === -1) chosenIndex = 0;
-
-    select.value = select.options[chosenIndex].value;
-  });
-};
-
-const startSlot = async (slotKey) => {
-  const slot = slots[slotKey];
-  if (!slot || !slot.select || !slot.video || !slot.select.value) return;
-
-  stopStream(slot.stream);
-  slot.stream = null;
-
-  const sameSourceSlot = Object.entries(slots).find(([key, current]) => (
-    key !== slotKey &&
-    current.select &&
-    current.select.value === slot.select.value &&
-    current.stream
-  ));
-
-  if (sameSourceSlot) {
-    slot.stream = sameSourceSlot[1].stream.clone();
-    slot.video.srcObject = slot.stream;
-    slot.video.play().catch(() => { });
-    return;
-  }
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { deviceId: { exact: slot.select.value } },
-    audio: false,
-  });
-
-  slot.stream = stream;
-  slot.video.srcObject = stream;
-  slot.video.play().catch(() => { });
-};
-
 const stopAllCameras = () => {
   Object.values(slots).forEach((slot) => {
     stopStream(slot.stream);
@@ -928,56 +1048,62 @@ const stopAllCameras = () => {
   });
 
   if (mainVideo) mainVideo.srcObject = null;
-  stopFramePump();
+  closeFrameSocket();
   updateStatus("Cameras stopped.");
 };
 
 const enableCameras = async () => {
-  if (!cameraSupported) {
-    updateStatus("Camera API is not supported in this browser.");
+  if (!sourceSupported) {
+    updateStatus("Camera and screen-share APIs are not supported in this browser.");
     return;
   }
 
   try {
-    updateStatus("Preparing camera sources...");
+    updateStatus("Preparing Prum iPhone 17 Pro and FaceTime sources...");
 
-    try {
-      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      stopStream(tempStream);
-    } catch (permissionError) {
-      // Continue with available sources.
+    if (cameraSupported) {
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        stopStream(tempStream);
+      } catch (permissionError) {
+        // Continue with available sources such as screen share.
+      }
     }
 
-    const devices = await listVideoDevices();
-    fillSelectOptions(slots.back.select, devices, "back");
-    fillSelectOptions(slots.front.select, devices, "front");
-    fillSelectOptions(slots.top.select, devices, "top");
-    applyDefaultSelections();
+    localVideoDevices = await listVideoDevices();
+    refreshSourceOptions();
 
     const startResults = await Promise.allSettled([
-      startSlot("back"),
       startSlot("front"),
       startSlot("top"),
     ]);
 
     const successCount = startResults.filter((result) => result.status === "fulfilled").length;
-
     refreshProgramFeed();
+
     if (successCount > 0) {
       startFramePump();
-      updateStatus("Camera sources connected. Python detection is receiving frames.");
+      updateStatus("Sources connected. Choose Prum iPhone 17 Pro or Screen / Window (FaceTime).");
+    } else if (screenShareSupported) {
+      stopFramePump();
+      updateStatus("No camera started yet. Choose Screen / Window (FaceTime) to show your FaceTime call.");
     } else {
       stopFramePump();
-      updateStatus("No camera sources available. Check permissions and connected devices.");
+      updateStatus("No camera sources available. Check browser permissions and connected devices.");
     }
   } catch (error) {
-    stopFramePump();
+    closeFrameSocket();
     updateStatus("Cannot initialize sources. Check browser permissions and reload.");
     console.error(error);
   }
 };
 
-if (cameraSupported && enableCamsBtn && stopCamsBtn) {
+setFrameStreamStatus("Waiting…");
+if (cameraStatus) {
+  updateStatus("Enable Cameras, then choose Prum iPhone 17 Pro or Screen / Window (FaceTime).");
+}
+
+if (sourceSupported && enableCamsBtn && stopCamsBtn) {
   enableCamsBtn.addEventListener("click", () => {
     enableCameras();
   });
@@ -989,21 +1115,40 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
   Object.entries(slots).forEach(([slotKey, slot]) => {
     if (!slot.select) return;
 
-    slot.select.addEventListener("change", async () => {
-      try {
-        await startSlot(slotKey);
-        refreshProgramFeed();
-        startFramePump();
-        updateStatus("Camera source updated. Python detection feed updated.");
-      } catch (error) {
-        updateStatus("Failed to switch camera source.");
-        console.error(error);
+    slot.select.addEventListener("change", () => {
+      if (slot.select.value === SCREEN_SOURCE_ID) {
+        updateStatus("Choose your FaceTime window in the share prompt.");
+        startScreenShareSlot(slotKey)
+          .then(() => {
+            refreshProgramFeed();
+            startFramePump();
+            updateStatus("FaceTime screen share connected. Python detection feed updated.");
+          })
+          .catch((error) => {
+            updateStatus("Screen share was canceled or blocked.");
+            console.error(error);
+          });
+        return;
       }
+
+      (async () => {
+        try {
+          await startSlot(slotKey);
+          refreshProgramFeed();
+          startFramePump();
+          updateStatus("Camera source updated. Python detection feed updated.");
+        } catch (error) {
+          updateStatus(error.message || "Failed to switch camera source.");
+          console.error(error);
+        }
+      })();
     });
   });
 
   if (programSelect) {
-    programSelect.addEventListener("change", refreshProgramFeed);
+    programSelect.addEventListener("change", () => {
+      refreshProgramFeed();
+    });
   }
 
   window.addEventListener("beforeunload", () => {
