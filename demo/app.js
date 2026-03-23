@@ -127,11 +127,30 @@ const addPlayerBtn = document.getElementById("addPlayerBtn");
 const playerSelect = document.getElementById("playerSelect");
 const saveTimeBtn = document.getElementById("saveTimeBtn");
 const scoreStatus = document.getElementById("scoreStatus");
+const wsStatusEl = document.getElementById("wsStatus");
+const penaltyCountEl = document.getElementById("penaltyCount");
+const penaltyTimeEl = document.getElementById("penaltyTime");
+const raceStatusEl = document.getElementById("raceStatus");
+const finalResultBox = document.getElementById("finalResultBox");
+const resultRawTimeEl = document.getElementById("resultRawTime");
+const resultPenaltySummaryEl = document.getElementById("resultPenaltySummary");
+const resultFinalTimeEl = document.getElementById("resultFinalTime");
 
 if (timerEl && startBtn && stopBtn && resetBtn) {
+  const backendProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const backendHost = window.location.hostname || "localhost";
+  const backendUrl = `${backendProtocol}//${backendHost}:8765`;
+
   let startTime = 0;
   let elapsedBefore = 0;
   let timerRafId = null;
+  let raceSocket = null;
+  let reconnectTimeoutId = null;
+  let manualSocketClose = false;
+  let latestBackendResult = null;
+  let latestPenaltyCount = 0;
+  let latestPenaltyTime = 0;
+  let pendingCommand = null;
   const players = [];
 
   const formatTime = (ms) => {
@@ -141,6 +160,8 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     const centiseconds = totalCentiseconds % 100;
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
   };
+
+  const formatSeconds = (seconds) => `${Number(seconds || 0).toFixed(2)}s`;
 
   const update = () => {
     const now = performance.now();
@@ -154,8 +175,65 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     return elapsedBefore + (performance.now() - startTime);
   };
 
+  const startFrontendTimer = () => {
+    if (timerRafId !== null) return;
+    startTime = performance.now();
+    timerRafId = requestAnimationFrame(update);
+  };
+
+  const stopFrontendTimer = () => {
+    if (timerRafId === null) return;
+    cancelAnimationFrame(timerRafId);
+    timerRafId = null;
+    elapsedBefore += performance.now() - startTime;
+    timerEl.textContent = formatTime(elapsedBefore);
+  };
+
+  const resetFrontendTimer = () => {
+    if (timerRafId !== null) {
+      cancelAnimationFrame(timerRafId);
+      timerRafId = null;
+    }
+    startTime = 0;
+    elapsedBefore = 0;
+    timerEl.textContent = "00:00.00";
+  };
+
   const setScoreStatus = (message) => {
     if (scoreStatus) scoreStatus.textContent = message;
+  };
+
+  const setRaceStatus = (message) => {
+    if (raceStatusEl) raceStatusEl.textContent = message;
+  };
+
+  const setWsStatus = (message) => {
+    if (wsStatusEl) wsStatusEl.textContent = message;
+  };
+
+  const updatePenaltyUi = (penaltyCount = 0, penaltyTime = 0) => {
+    latestPenaltyCount = penaltyCount;
+    latestPenaltyTime = penaltyTime;
+    if (penaltyCountEl) penaltyCountEl.textContent = String(penaltyCount);
+    if (penaltyTimeEl) penaltyTimeEl.textContent = formatSeconds(penaltyTime);
+  };
+
+  const hideFinalResult = () => {
+    latestBackendResult = null;
+    finalResultBox?.classList.add("is-hidden");
+    if (resultRawTimeEl) resultRawTimeEl.textContent = "--";
+    if (resultPenaltySummaryEl) resultPenaltySummaryEl.textContent = "--";
+    if (resultFinalTimeEl) resultFinalTimeEl.textContent = "--";
+  };
+
+  const renderFinalResult = (payload) => {
+    latestBackendResult = payload;
+    if (resultRawTimeEl) resultRawTimeEl.textContent = formatSeconds(payload.rawTime);
+    if (resultPenaltySummaryEl) {
+      resultPenaltySummaryEl.textContent = `${payload.penaltyCount} × ${Number(payload.penaltySeconds || 0).toFixed(2)}s = ${formatSeconds(payload.penaltyTime)}`;
+    }
+    if (resultFinalTimeEl) resultFinalTimeEl.textContent = formatSeconds(payload.finalTime);
+    finalResultBox?.classList.remove("is-hidden");
   };
 
   const renderPlayerOptions = () => {
@@ -230,6 +308,13 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     setScoreStatus(`Added player: ${name}`);
   };
 
+  const getAuthoritativeMs = () => {
+    if (latestBackendResult && Number.isFinite(latestBackendResult.finalMs)) {
+      return latestBackendResult.finalMs;
+    }
+    return getCurrentElapsed();
+  };
+
   const saveTimeForPlayer = () => {
     if (!playerSelect || !playerSelect.value) {
       setScoreStatus("Please add/select a player first.");
@@ -242,15 +327,19 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
       return;
     }
 
-    const currentMs = getCurrentElapsed();
+    const currentMs = getAuthoritativeMs();
     if (currentMs <= 0) {
-      setScoreStatus("Timer is zero. Run timer before saving.");
+      setScoreStatus("No result available yet.");
       return;
     }
 
     if (currentMs < player.bestMs) {
       player.bestMs = currentMs;
-      setScoreStatus(`Saved new best for ${player.name}: ${formatTime(currentMs)}`);
+      if (latestBackendResult) {
+        setScoreStatus(`Saved backend final result for ${player.name}: ${formatSeconds(latestBackendResult.finalTime)}`);
+      } else {
+        setScoreStatus(`Saved current timer for ${player.name}: ${formatTime(currentMs)}`);
+      }
     } else {
       setScoreStatus(`${player.name} time ${formatTime(currentMs)} is slower than best ${formatTime(player.bestMs)}`);
     }
@@ -258,28 +347,142 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     renderScoreboard();
   };
 
+  const sendBackendMessage = (payload) => {
+    if (!raceSocket || raceSocket.readyState !== WebSocket.OPEN) {
+      pendingCommand = payload;
+      setRaceStatus("Backend socket is not connected yet. Command queued.");
+      return false;
+    }
+
+    raceSocket.send(JSON.stringify(payload));
+    pendingCommand = null;
+    return true;
+  };
+
+  const applyBackendState = (payload) => {
+    updatePenaltyUi(payload.penaltyCount, payload.penaltyTime);
+
+    const state = payload.state || "idle";
+    if (state === "idle") {
+      setRaceStatus("Backend idle. Press Start to begin a run.");
+    } else if (state === "running") {
+      setRaceStatus("Race running. Penalties are streamed from Python.");
+    } else if (state === "finished") {
+      setRaceStatus("Race finished. Final result received from backend.");
+      stopFrontendTimer();
+      renderFinalResult(payload);
+    } else if (state === "stopped") {
+      setRaceStatus("Race stopped by operator.");
+      stopFrontendTimer();
+    } else {
+      setRaceStatus("Backend connected and waiting.");
+    }
+  };
+
+  const handleSocketMessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+
+      if (payload.type === "state") {
+        applyBackendState(payload);
+        return;
+      }
+
+      if (payload.type === "penalty_update") {
+        updatePenaltyUi(payload.penaltyCount, payload.penaltyTime);
+        setRaceStatus(`Penalty updated: ${payload.penaltyCount} event(s).`);
+        return;
+      }
+
+      if (payload.type === "final_result") {
+        updatePenaltyUi(payload.penaltyCount, payload.penaltyTime);
+        stopFrontendTimer();
+        renderFinalResult(payload);
+        setRaceStatus("Final result received from Python.");
+        return;
+      }
+
+      if (payload.type === "status") {
+        setRaceStatus(payload.message || "Backend status updated.");
+        return;
+      }
+
+      if (payload.type === "error") {
+        setRaceStatus(payload.message || "Backend reported an error.");
+      }
+    } catch (error) {
+      console.error("Invalid backend payload:", error, event.data);
+    }
+  };
+
+  const scheduleReconnect = () => {
+    if (manualSocketClose || reconnectTimeoutId !== null) return;
+
+    reconnectTimeoutId = window.setTimeout(() => {
+      reconnectTimeoutId = null;
+      connectBackend();
+    }, 1500);
+  };
+
+  const connectBackend = () => {
+    if (raceSocket && (raceSocket.readyState === WebSocket.OPEN || raceSocket.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    setWsStatus("Connecting…");
+    raceSocket = new WebSocket(backendUrl);
+
+    raceSocket.addEventListener("open", () => {
+      setWsStatus("Connected");
+      setRaceStatus("Backend connected. Ready to start.");
+      if (pendingCommand) {
+        raceSocket.send(JSON.stringify(pendingCommand));
+        pendingCommand = null;
+      }
+    });
+
+    raceSocket.addEventListener("message", handleSocketMessage);
+
+    raceSocket.addEventListener("close", () => {
+      setWsStatus("Disconnected");
+      if (!manualSocketClose) {
+        setRaceStatus("Backend disconnected. Retrying…");
+        scheduleReconnect();
+      }
+    });
+
+    raceSocket.addEventListener("error", (error) => {
+      console.error("Race socket error:", error);
+      setWsStatus("Connection error");
+      setRaceStatus("Could not talk to Python backend.");
+    });
+  };
+
   startBtn.addEventListener("click", () => {
-    if (timerRafId !== null) return;
-    startTime = performance.now();
-    timerRafId = requestAnimationFrame(update);
+    hideFinalResult();
+    updatePenaltyUi(0, 0);
+    resetFrontendTimer();
+    startFrontendTimer();
+    setRaceStatus("Start command sent. Waiting for backend updates.");
+
+    const sent = sendBackendMessage({ type: "arm" });
+    if (!sent) {
+      connectBackend();
+    }
   });
 
   stopBtn.addEventListener("click", () => {
-    if (timerRafId === null) return;
-    cancelAnimationFrame(timerRafId);
-    timerRafId = null;
-    elapsedBefore += performance.now() - startTime;
-    timerEl.textContent = formatTime(elapsedBefore);
+    stopFrontendTimer();
+    sendBackendMessage({ type: "stop" });
+    setRaceStatus("Frontend timer stopped.");
   });
 
   resetBtn.addEventListener("click", () => {
-    if (timerRafId !== null) {
-      cancelAnimationFrame(timerRafId);
-      timerRafId = null;
-    }
-    startTime = 0;
-    elapsedBefore = 0;
-    timerEl.textContent = "00:00.00";
+    resetFrontendTimer();
+    updatePenaltyUi(0, 0);
+    hideFinalResult();
+    sendBackendMessage({ type: "reset" });
+    setRaceStatus("Run reset.");
   });
 
   addPlayerBtn?.addEventListener("click", addPlayer);
@@ -290,8 +493,22 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
   saveTimeBtn?.addEventListener("click", saveTimeForPlayer);
 
+  window.addEventListener("beforeunload", () => {
+    manualSocketClose = true;
+    if (reconnectTimeoutId !== null) {
+      window.clearTimeout(reconnectTimeoutId);
+      reconnectTimeoutId = null;
+    }
+    if (raceSocket && raceSocket.readyState === WebSocket.OPEN) {
+      raceSocket.close();
+    }
+  });
+
   renderPlayerOptions();
   renderScoreboard();
+  hideFinalResult();
+  updatePenaltyUi(0, 0);
+  connectBackend();
 }
 
 const enableCamsBtn = document.getElementById("enableCamsBtn");
@@ -375,35 +592,6 @@ const fillSelectOptions = (select, devices, slotKey) => {
   }
 };
 
-// const FRONT_LABEL_HINTS = [
-//   "iphone",
-//   "front",
-//   "continuity",
-//   "ios",
-//   "phone",
-// ];
-
-// const TOP_LABEL_HINTS = [
-//   "logitech",
-//   "webcam",
-//   "usb",
-//   "brio",
-//   "c920",
-//   "c922",
-//   "c930",
-// ];
-
-// const SLOT_DEVICE_PREFERENCES = {
-//   front: ["iphone 17 pro"],
-//   top: ["iphone 14 pro"],
-// };
-
-// const SLOT_DISPLAY_PREFERENCES = {
-//   front: {
-//     displayName: "Prum iPhone 17 Pro",
-//     missingValue: "__missing_front_iphone_17_pro__",
-//   },
-// };
 const FRONT_LABEL_HINTS = [
   "iphone",
   "front",
@@ -462,27 +650,16 @@ const getPreferenceScore = (slotKey, label) => {
 
   if (matchesPreferredModel(slotKey, label)) return 100;
 
-  // if (slotKey === "front") {
-  //   let score = 0;
-  //   FRONT_LABEL_HINTS.forEach((hint) => {
-  //     if (normalized.includes(hint)) score += 2;
-  //   });
-  //   if (normalized.includes("14 pro")) score -= 10;
-  //   if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
-  //   if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
-  //   if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
-  //   return score;
-  // }
   if (slotKey === "front") {
-  let score = 0;
-  FRONT_LABEL_HINTS.forEach((hint) => {
-    if (normalized.includes(hint)) score += 3;
-  });
-  if (normalized.includes("iphone") || normalized.includes("continuity") || normalized.includes("ios")) score -= 12;
-  if (normalized.includes("phone") || normalized.includes("17 pro") || normalized.includes("14 pro")) score -= 8;
-  if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
-  return score;
-}
+    let score = 0;
+    FRONT_LABEL_HINTS.forEach((hint) => {
+      if (normalized.includes(hint)) score += 3;
+    });
+    if (normalized.includes("iphone") || normalized.includes("continuity") || normalized.includes("ios")) score -= 12;
+    if (normalized.includes("phone") || normalized.includes("17 pro") || normalized.includes("14 pro")) score -= 8;
+    if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
+    return score;
+  }
 
   if (slotKey === "top") {
     let score = 0;
