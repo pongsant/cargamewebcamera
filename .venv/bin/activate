@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/pongsant/Desktop/spring2026/dt major class/car project 2/web camera/web car camera/demo/.venv"
+VIRTUAL_ENV="/Users/pongsant/Desktop/spring2026/dt major class/car project 2/web camera/web car camera/.venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

@@ -12,7 +12,9 @@ import websockets
 
 HOST = "0.0.0.0"
 PORT = 8765
-CAMERA_INDEX = 0
+PREFERRED_CAMERA_LABEL = "Prum iPhone 17 Pro"
+PREFERRED_CAMERA_INDEX = 1
+CAMERA_FALLBACK_INDICES = (PREFERRED_CAMERA_INDEX, 0, 2)
 PENALTY_SECONDS = 1.0
 FRAME_QUEUE_MAX = 4
 FRAME_IDLE_SLEEP = 0.01
@@ -216,7 +218,23 @@ def pop_latest_browser_frame():
     return latest_packet
 
 
-def read_next_frame(capture):
+def open_local_fallback_camera():
+    attempted = set()
+
+    for camera_index in CAMERA_FALLBACK_INDICES:
+        if camera_index in attempted:
+            continue
+        attempted.add(camera_index)
+
+        capture = cv2.VideoCapture(camera_index)
+        if capture.isOpened():
+            return capture, camera_index
+        capture.release()
+
+    return None, None
+
+
+def read_next_frame(capture, local_source_label):
     packet = pop_latest_browser_frame()
     if packet is not None:
         return packet
@@ -229,7 +247,7 @@ def read_next_frame(capture):
         return None
     return build_frame_packet(
         frame,
-        source_label="Local Camera",
+        source_label=local_source_label,
         source_key="local",
         is_web=False,
     )
@@ -238,13 +256,24 @@ def read_next_frame(capture):
 server_thread = threading.Thread(target=start_websocket_server, daemon=True)
 server_thread.start()
 
-fallback_cap = cv2.VideoCapture(CAMERA_INDEX)
-if not fallback_cap.isOpened():
+fallback_cap, fallback_camera_index = open_local_fallback_camera()
+if not fallback_cap:
+    fallback_camera_index = None
+    local_fallback_source_label = "Local Camera"
     print("Could not open local camera. Waiting for browser frames from the website.")
-    fallback_cap.release()
-    fallback_cap = None
 else:
-    print(f"Opened local camera index {CAMERA_INDEX} as fallback source.")
+    if fallback_camera_index == PREFERRED_CAMERA_INDEX:
+        local_fallback_source_label = PREFERRED_CAMERA_LABEL
+        print(
+            f"Opened preferred local camera '{PREFERRED_CAMERA_LABEL}' "
+            f"(index {fallback_camera_index}) as fallback source."
+        )
+    else:
+        local_fallback_source_label = f"Local Camera (index {fallback_camera_index})"
+        print(
+            f"Preferred local camera '{PREFERRED_CAMERA_LABEL}' not found. "
+            f"Opened local camera index {fallback_camera_index} as fallback source."
+        )
 
 # ----------------------------
 # green marker range (HSV)
@@ -286,7 +315,7 @@ else:
             time.sleep(FRAME_IDLE_SLEEP)
 
     while frame_packet is None:
-        frame_packet = read_next_frame(fallback_cap)
+        frame_packet = read_next_frame(fallback_cap, local_fallback_source_label)
         if frame_packet is None:
             time.sleep(FRAME_IDLE_SLEEP)
 
@@ -365,7 +394,7 @@ try:
                         penalty_count=game["outside_count"],
                     ))
 
-        frame_packet = read_next_frame(fallback_cap)
+        frame_packet = read_next_frame(fallback_cap, local_fallback_source_label)
         if frame_packet is None:
             time.sleep(FRAME_IDLE_SLEEP)
             continue

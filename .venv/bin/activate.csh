@@ -8,7 +8,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV "/Users/pongsant/Desktop/spring2026/dt major class/car project 2/web camera/web car camera/demo/.venv"
+setenv VIRTUAL_ENV "/Users/pongsant/Desktop/spring2026/dt major class/car project 2/web camera/web car camera/.venv"
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/bin:$PATH"

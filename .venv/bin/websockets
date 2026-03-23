@@ -1,0 +1,8 @@
+#!/bin/sh
+'''exec' "/Users/pongsant/Desktop/spring2026/dt major class/car project 2/web camera/web car camera/.venv/bin/python" "$0" "$@"
+' '''
+import sys
+from websockets.cli import main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(main())
