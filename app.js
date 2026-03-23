@@ -376,16 +376,42 @@ const TOP_LABEL_HINTS = [
   "c930",
 ];
 
+const SLOT_DEVICE_PREFERENCES = {
+  front: ["iphone 17 pro"],
+  top: ["iphone 14 pro"],
+};
+
+const normalizeDeviceLabel = (label) => (
+  (label || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+);
+
+const compactDeviceLabel = (label) => normalizeDeviceLabel(label).replace(/\s+/g, "");
+
 const getPreferenceScore = (slotKey, label) => {
-  const normalized = (label || "").toLowerCase();
+  const normalized = normalizeDeviceLabel(label);
+  const compactNormalized = compactDeviceLabel(label);
   if (!normalized) return 0;
+
+  const preferredModels = SLOT_DEVICE_PREFERENCES[slotKey] || [];
+  for (const modelHint of preferredModels) {
+    const normalizedHint = normalizeDeviceLabel(modelHint);
+    const compactHint = compactDeviceLabel(modelHint);
+
+    if (normalized.includes(normalizedHint) || compactNormalized.includes(compactHint)) {
+      return 100;
+    }
+  }
 
   if (slotKey === "front") {
     let score = 0;
     FRONT_LABEL_HINTS.forEach((hint) => {
       if (normalized.includes(hint)) score += 2;
     });
-    if (normalized.includes("built-in") || normalized.includes("builtin")) score -= 2;
+    if (normalized.includes("14 pro")) score -= 10;
+    if (normalized.includes("built in") || normalized.includes("builtin")) score -= 2;
     if (normalized.includes("macbook") || normalized.includes("mac")) score -= 1;
     if (normalized.includes("back") || normalized.includes("rear")) score -= 3;
     return score;
@@ -397,6 +423,7 @@ const getPreferenceScore = (slotKey, label) => {
       if (normalized.includes(hint)) score += 3;
     });
     if (normalized.includes("iphone")) score -= 1;
+    if (normalized.includes("17 pro")) score -= 10;
     return score;
   }
 
