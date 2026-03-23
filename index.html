@@ -59,6 +59,28 @@
         </div>
       </div>
 
+      <div class="remote-room panel-lite">
+        <div class="module-head">
+          <h2>Remote Phone Room</h2>
+        </div>
+        <div class="remote-room-grid">
+          <div>
+            <label for="roomCodeField">Room Code</label>
+            <input id="roomCodeField" class="control-input" type="text" readonly />
+          </div>
+          <button id="copyRoomCodeBtn" class="btn" type="button">Copy Code</button>
+          <div>
+            <label for="roomLinkField">Join Link</label>
+            <input id="roomLinkField" class="control-input" type="text" readonly />
+          </div>
+          <button id="copyRoomLinkBtn" class="btn" type="button">Copy Link</button>
+        </div>
+        <p id="remoteStatus" class="setup-note">
+          Remote room is preparing.
+        </p>
+        <div id="remoteRoster" class="remote-roster"></div>
+      </div>
+
       <div class="camera-main-row">
         <div class="camera-grid">
           <article class="camera-card panel-lite camera-card--program">

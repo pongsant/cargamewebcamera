@@ -1,3 +1,11 @@
+import {
+  SCREEN_SOURCE_ID,
+  createRoomCode,
+  isRemoteSourceId,
+  normalizeRoomCode,
+} from "./rtc-shared.js";
+import { createRemoteRoomHost } from "./remote-room.js";
+
 const START_GATE_KEY = "raceControlStarted";
 const exitBtn = document.getElementById("exitBtn");
 
@@ -297,8 +305,14 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 const enableCamsBtn = document.getElementById("enableCamsBtn");
 const stopCamsBtn = document.getElementById("stopCamsBtn");
 const cameraStatus = document.getElementById("cameraStatus");
+const remoteStatus = document.getElementById("remoteStatus");
 const programSelect = document.getElementById("programSelect");
 const mainVideo = document.getElementById("mainVideo");
+const roomCodeField = document.getElementById("roomCodeField");
+const roomLinkField = document.getElementById("roomLinkField");
+const copyRoomCodeBtn = document.getElementById("copyRoomCodeBtn");
+const copyRoomLinkBtn = document.getElementById("copyRoomLinkBtn");
+const remoteRoster = document.getElementById("remoteRoster");
 
 const slots = {
   back: { select: document.getElementById("backSelect"), video: document.getElementById("backVideo"), stream: null },
@@ -313,10 +327,15 @@ const cameraSupported =
 const screenShareSupported =
   Boolean(navigator.mediaDevices) &&
   typeof navigator.mediaDevices.getDisplayMedia === "function";
-const SCREEN_SOURCE_ID = "__screen_share__";
+let localVideoDevices = [];
+let remoteSources = new Map();
 
 const updateStatus = (message) => {
   if (cameraStatus) cameraStatus.textContent = message;
+};
+
+const updateRemoteStatus = (message) => {
+  if (remoteStatus) remoteStatus.textContent = message;
 };
 
 const stopStream = (stream) => {
@@ -398,17 +417,24 @@ const fillSelectOptions = (select, devices, slotKey) => {
     select.appendChild(option);
   });
 
-  if (devices.length === 0 && !screenShareSupported) {
+  remoteSources.forEach((source) => {
+    const option = document.createElement("option");
+    option.value = source.id;
+    option.textContent = `${source.label} (Remote)`;
+    select.appendChild(option);
+  });
+
+  if (devices.length === 0 && !screenShareSupported && remoteSources.size === 0) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "No camera found";
+    option.textContent = "No source found";
     select.appendChild(option);
     select.disabled = true;
     return;
   }
 
   select.disabled = false;
-  if (previous && devices.some((device) => device.deviceId === previous)) {
+  if (previous && Array.from(select.options).some((option) => option.value === previous && !option.disabled)) {
     select.value = previous;
   }
 };
@@ -503,7 +529,7 @@ const findBestOptionIndex = (select, slotKey, used) => {
   for (let i = 0; i < select.options.length; i += 1) {
     const option = select.options[i];
     const value = option.value;
-    if (!value || value === SCREEN_SOURCE_ID || option.disabled || used.has(value)) continue;
+    if (!value || value === SCREEN_SOURCE_ID || isRemoteSourceId(value) || option.disabled || used.has(value)) continue;
 
     const score = getPreferenceScore(slotKey, option.textContent);
     if (score > bestScore) {
@@ -537,6 +563,15 @@ const applyDefaultSelections = () => {
     if (chosenIndex === -1) {
       for (let i = 0; i < select.options.length; i += 1) {
         const value = select.options[i].value;
+        if (!value || value === SCREEN_SOURCE_ID || select.options[i].disabled || used.has(value)) continue;
+        chosenIndex = i;
+        break;
+      }
+    }
+
+    if (chosenIndex === -1) {
+      for (let i = 0; i < select.options.length; i += 1) {
+        const value = select.options[i].value;
         if (!value || select.options[i].disabled || used.has(value)) continue;
         chosenIndex = i;
         break;
@@ -548,6 +583,13 @@ const applyDefaultSelections = () => {
     select.value = select.options[chosenIndex].value;
     used.add(select.value);
   });
+};
+
+const refreshSourceOptions = () => {
+  fillSelectOptions(slots.back.select, localVideoDevices, "back");
+  fillSelectOptions(slots.front.select, localVideoDevices, "front");
+  fillSelectOptions(slots.top.select, localVideoDevices, "top");
+  applyDefaultSelections();
 };
 
 const getMatchingSourceSlot = (slotKey, sourceValue) => Object.entries(slots).find(([key, current]) => (
@@ -601,6 +643,15 @@ const startSlot = async (slotKey) => {
     return;
   }
 
+  if (isRemoteSourceId(slot.select.value)) {
+    const remoteSource = remoteSources.get(slot.select.value);
+    if (!remoteSource?.stream) {
+      throw new Error("Remote source is not available.");
+    }
+    setSlotStream(slotKey, remoteSource.stream.clone());
+    return;
+  }
+
   if (slot.select.value === SCREEN_SOURCE_ID) {
     await startScreenShareSlot(slotKey);
     return;
@@ -625,6 +676,32 @@ const stopAllCameras = () => {
   updateStatus("Cameras stopped.");
 };
 
+const syncRemoteSelections = () => {
+  Object.entries(slots).forEach(([slotKey, slot]) => {
+    if (!slot.select || !isRemoteSourceId(slot.select.value)) return;
+
+    const source = remoteSources.get(slot.select.value);
+    if (!source) {
+      stopStream(slot.stream);
+      slot.stream = null;
+      if (slot.video) slot.video.srcObject = null;
+      if (mainVideo && programSelect?.value === slotKey) {
+        mainVideo.srcObject = null;
+      }
+      return;
+    }
+
+    const sameSourceSlot = getMatchingSourceSlot(slotKey, slot.select.value);
+    if (sameSourceSlot) {
+      setSlotStream(slotKey, sameSourceSlot[1].stream.clone());
+    } else {
+      setSlotStream(slotKey, source.stream.clone());
+    }
+  });
+
+  refreshProgramFeed();
+};
+
 const enableCameras = async () => {
   if (!cameraSupported) {
     updateStatus("Camera API is not supported in this browser.");
@@ -641,11 +718,8 @@ const enableCameras = async () => {
       // Continue with available sources.
     }
 
-    const devices = await listVideoDevices();
-    fillSelectOptions(slots.back.select, devices, "back");
-    fillSelectOptions(slots.front.select, devices, "front");
-    fillSelectOptions(slots.top.select, devices, "top");
-    applyDefaultSelections();
+    localVideoDevices = await listVideoDevices();
+    refreshSourceOptions();
 
     const startResults = await Promise.allSettled([
       startSlot("back"),
@@ -668,6 +742,79 @@ const enableCameras = async () => {
     console.error(error);
   }
 };
+
+const renderRemoteRoster = (entries) => {
+  if (!remoteRoster) return;
+  remoteRoster.innerHTML = "";
+
+  if (!entries.length) {
+    const pill = document.createElement("span");
+    pill.className = "remote-roster-pill remote-roster-pill--idle";
+    pill.textContent = "No phones joined yet";
+    remoteRoster.appendChild(pill);
+    return;
+  }
+
+  entries.forEach((entry) => {
+    const pill = document.createElement("span");
+    pill.className = `remote-roster-pill${entry.live ? " remote-roster-pill--live" : ""}`;
+    pill.textContent = entry.live ? `${entry.name} live` : `${entry.name} connecting`;
+    remoteRoster.appendChild(pill);
+  });
+};
+
+const copyText = async (value, successMessage) => {
+  if (!value) return;
+
+  try {
+    await navigator.clipboard.writeText(value);
+    updateRemoteStatus(successMessage);
+  } catch (error) {
+    updateRemoteStatus("Copy failed. You can select the field and copy it manually.");
+  }
+};
+
+const roomParams = new URLSearchParams(window.location.search);
+const currentRoomCode = normalizeRoomCode(roomParams.get("room")) || createRoomCode();
+if (window.location.protocol.startsWith("http")) {
+  roomParams.set("room", currentRoomCode);
+  const nextUrl = `${window.location.pathname}?${roomParams.toString()}`;
+  window.history.replaceState({}, "", nextUrl);
+}
+
+const remoteHost = createRemoteRoomHost({
+  roomId: currentRoomCode,
+  onStatus: (message) => {
+    updateRemoteStatus(message);
+  },
+  onRosterChange: (entries) => {
+    renderRemoteRoster(entries);
+  },
+  onSourcesChange: (sources) => {
+    remoteSources = sources;
+    refreshSourceOptions();
+    syncRemoteSelections();
+  },
+});
+
+if (roomCodeField) {
+  roomCodeField.value = currentRoomCode;
+}
+
+if (roomLinkField) {
+  roomLinkField.value = remoteHost.getJoinUrl();
+}
+
+copyRoomCodeBtn?.addEventListener("click", () => {
+  copyText(currentRoomCode, "Room code copied.");
+});
+
+copyRoomLinkBtn?.addEventListener("click", () => {
+  copyText(remoteHost.getJoinUrl(), "Join link copied.");
+});
+
+renderRemoteRoster([]);
+remoteHost.connect();
 
 if (cameraSupported && enableCamsBtn && stopCamsBtn) {
   enableCamsBtn.addEventListener("click", () => {
@@ -700,9 +847,9 @@ if (cameraSupported && enableCamsBtn && stopCamsBtn) {
         try {
           await startSlot(slotKey);
           refreshProgramFeed();
-          updateStatus("Camera source updated.");
+          updateStatus(isRemoteSourceId(slot.select.value) ? "Remote source updated." : "Camera source updated.");
         } catch (error) {
-          updateStatus("Failed to switch camera source.");
+          updateStatus(isRemoteSourceId(slot.select.value) ? "Failed to switch remote source." : "Failed to switch camera source.");
           console.error(error);
         }
       })();

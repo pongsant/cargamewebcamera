@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join Camera Room</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="phone-mode">
+  <main class="phone-layout">
+    <section class="phone-shell panel-shell">
+      <div class="module-head">
+        <h2>Join Camera Room</h2>
+      </div>
+
+      <p class="setup-note phone-note">
+        Open this on a phone, allow camera access, and your video will appear in the race dashboard.
+      </p>
+
+      <div class="phone-form">
+        <label for="roomInput">Room Code</label>
+        <input id="roomInput" class="control-input" type="text" maxlength="6" placeholder="ABC123" />
+
+        <label for="cameraNameInput">Camera Name</label>
+        <input id="cameraNameInput" class="control-input" type="text" maxlength="24" placeholder="Friend Phone" />
+
+        <label for="facingModeSelect">Lens</label>
+        <select id="facingModeSelect" class="control-input">
+          <option value="environment">Rear Camera</option>
+          <option value="user">Front Camera</option>
+        </select>
+
+        <div class="phone-actions">
+          <button id="joinCameraBtn" class="btn btn-accent" type="button">Join Camera</button>
+          <button id="leaveCameraBtn" class="btn" type="button">Leave</button>
+        </div>
+
+        <p id="phoneStatus" class="setup-note">Ready to connect.</p>
+      </div>
+
+      <div class="phone-preview-wrap panel-lite">
+        <video id="phonePreview" autoplay muted playsinline></video>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="join.js"></script>
+</body>
+</html>

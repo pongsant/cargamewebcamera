@@ -206,6 +206,43 @@ th,
   line-height: 1.55;
 }
 
+.remote-room {
+  padding: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.remote-room-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1);
+  align-items: end;
+}
+
+.remote-roster {
+  margin-top: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.remote-roster-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: var(--text-sm);
+  background: #f4f4f4;
+}
+
+.remote-roster-pill--live {
+  background: #111111;
+  color: #ffffff;
+  border-color: #111111;
+}
+
+.remote-roster-pill--idle {
+  color: var(--muted);
+}
+
 .camera-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(190px, 20vw, 280px);
@@ -692,6 +729,51 @@ td {
   transform: none;
 }
 
+.phone-mode {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.phone-layout {
+  width: min(100%, 540px);
+}
+
+.phone-shell {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.phone-form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.phone-note {
+  max-width: 42ch;
+}
+
+.phone-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.phone-preview-wrap {
+  padding: var(--space-1);
+}
+
+.phone-preview-wrap video {
+  width: 100%;
+  display: block;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: calc(var(--radius-1) - 2px);
+  background: #dfdfdf;
+  border: 1px solid var(--line);
+}
+
 .start-logo-viewer {
   width: min(1300px, 92vw);
   height: clamp(250px, 58vh, 760px);
@@ -798,6 +880,10 @@ td {
   .camera-setup {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .remote-room-grid {
+    grid-template-columns: 1fr;
   }
 
   .camera-head {
