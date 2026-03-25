@@ -825,6 +825,34 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     renderScoreboard();
   };
 
+  const stabilizeAddPlayerFocusScroll = () => {
+    if (!playerNameInput) return;
+
+    let lockedScrollY = null;
+
+    const restoreScroll = () => {
+      if (lockedScrollY === null) return;
+      if (Math.abs(window.scrollY - lockedScrollY) > 1) {
+        window.scrollTo(window.scrollX, lockedScrollY);
+      }
+    };
+
+    playerNameInput.addEventListener("focus", () => {
+      lockedScrollY = window.scrollY;
+      window.requestAnimationFrame(restoreScroll);
+    });
+
+    playerNameInput.addEventListener("click", () => {
+      if (lockedScrollY === null) lockedScrollY = window.scrollY;
+      window.requestAnimationFrame(restoreScroll);
+    });
+
+    playerNameInput.addEventListener("input", restoreScroll);
+    playerNameInput.addEventListener("blur", () => {
+      lockedScrollY = null;
+    });
+  };
+
   const sendBackendMessage = (payload) => {
     if (!raceSocket || raceSocket.readyState !== WebSocket.OPEN) {
       pendingCommand = payload;
@@ -970,6 +998,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   });
 
   saveTimeBtn?.addEventListener("click", saveTimeForPlayer);
+  stabilizeAddPlayerFocusScroll();
 
   moreResultsBtn?.addEventListener("click", () => {
     setMoreModalOpen(true);
@@ -1640,7 +1669,7 @@ const enableCameras = async () => {
 
 setFrameStreamStatus("Waiting…");
 if (cameraStatus) {
-  updateStatus("Enable Cameras, then choose Prum iPhone 17 Pro or Screen / Window (FaceTime).");
+  updateStatus("");
 }
 
 if (sourceSupported && enableCamsBtn && stopCamsBtn) {

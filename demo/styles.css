@@ -2560,3 +2560,57 @@ body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-idle .timer {
 body.dashboard-mode .timer-fx-canvas {
   opacity: 1;
 }
+
+/* Ranking Frame + Add Player Stability */
+body.dashboard-mode .results-table-panel {
+  border: 2px solid #000000 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08) !important;
+  background: #ffffff !important;
+}
+
+body.dashboard-mode .results-podium .podium-card {
+  border: 2px solid #000000 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06) !important;
+  background: #ffffff !important;
+}
+
+body.dashboard-mode .results-controls {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+  overflow-anchor: none;
+}
+
+body.dashboard-mode .results-controls::before,
+body.dashboard-mode .results-controls::after {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+
+body.dashboard-mode .results-controls .btn:hover,
+body.dashboard-mode .results-controls .btn:active,
+body.dashboard-mode .results-controls .btn-accent:hover,
+body.dashboard-mode .results-controls .btn-accent:active {
+  transform: none !important;
+}
+
+body.dashboard-mode .results-controls .control-input {
+  font-size: 16px !important;
+}
+
+body.dashboard-mode {
+  overflow-anchor: none;
+}
+
+body.dashboard-mode #enableCamsBtn,
+body.dashboard-mode #stopCamsBtn {
+  border: 2px solid #000000 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
