@@ -79,8 +79,10 @@ const cleanupRoom = (roomId) => {
 };
 
 const fileFromPathname = (pathname) => {
-  if (pathname === "/") return "start.html";
-  if (pathname === "/dashboard") return "index.html";
+  if (pathname === "/" || pathname === "/demo" || pathname === "/demo/") return "demo/start.html";
+  if (pathname === "/dashboard") return "demo/index.html";
+  if (pathname === "/start.html") return "demo/start.html";
+  if (pathname === "/index.html") return "demo/index.html";
   if (pathname === "/phone") return "phone.html";
 
   const safePath = normalize(pathname).replace(/^(\.\.(\/|\\|$))+/, "");

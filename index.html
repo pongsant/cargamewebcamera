@@ -6,17 +6,8 @@
   <title>Race Control - Live Dashboard</title>
   <script>
     (() => {
-      const START_GATE_KEY = "raceControlStarted";
-      let canEnterDashboard = false;
-
-      try {
-        canEnterDashboard = sessionStorage.getItem(START_GATE_KEY) === "true";
-      } catch (error) {
-        canEnterDashboard = false;
-      }
-
-      if (!canEnterDashboard) {
-        window.location.replace("start.html");
+      if (!window.location.pathname.includes("/demo/")) {
+        window.location.replace("./demo/index.html");
       }
     })();
   </script>
