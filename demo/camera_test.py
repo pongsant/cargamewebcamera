@@ -22,7 +22,8 @@ FRAME_IDLE_SLEEP = 0.01
 WEBSOCKET_MAX_SIZE = 8_000_000
 WAIT_FOR_BROWSER_FIRST_FRAME_SECONDS = 10.0
 INTRO_VIDEO_FILENAME = "Race_Track_done.MP4"
-INTRO_FALLBACK_FPS = 30.0
+INTRO_VIDEO_MAX_SECONDS = 10.0
+FIELD_BACKGROUND_FILENAME = "f1_car_field.png"
 DISPLAY_WINDOW_NAME = "Race Track Game"
 HUD_PANEL_HEIGHT = 170
 
@@ -31,6 +32,7 @@ frame_queue = queue.Queue(maxsize=FRAME_QUEUE_MAX)
 clients = set()
 clients_lock = threading.Lock()
 server_loop = None
+intro_has_played = False
 
 
 def make_state_payload(state, *, raw_time=0.0, final_time=0.0, penalty_count=0):
@@ -258,64 +260,47 @@ def read_next_frame(capture, local_source_label):
     )
 
 
-def play_intro_clip():
-    intro_path = os.path.join(os.path.dirname(__file__), INTRO_VIDEO_FILENAME)
-    if not os.path.exists(intro_path):
-        print(f"Intro clip not found: {intro_path}. Skipping intro.")
-        return
-
-    intro_cap = cv2.VideoCapture(intro_path)
-    if not intro_cap.isOpened():
-        print(f"Could not open intro clip: {intro_path}. Skipping intro.")
-        return
-
-    fps = intro_cap.get(cv2.CAP_PROP_FPS)
-    if fps is None or fps <= 0:
-        fps = INTRO_FALLBACK_FPS
-    frame_delay_ms = max(1, int(round(1000.0 / fps)))
-
-    print(f"Playing intro clip: {INTRO_VIDEO_FILENAME}")
-    while True:
-        ok, intro_frame = intro_cap.read()
-        if not ok or intro_frame is None:
-            break
-
-        cv2.imshow(DISPLAY_WINDOW_NAME, intro_frame)
-        key = cv2.waitKey(frame_delay_ms) & 0xFF
-        if key in (27, ord(" ")):
-            break
-
-    intro_cap.release()
-
-
-def open_looping_background_clip():
+def open_intro_clip():
     clip_path = os.path.join(os.path.dirname(__file__), INTRO_VIDEO_FILENAME)
     if not os.path.exists(clip_path):
-        print(f"Background clip not found: {clip_path}. Using camera frame as background.")
+        print(f"Intro clip not found: {clip_path}. Using field image only.")
         return None
 
     clip_cap = cv2.VideoCapture(clip_path)
     if not clip_cap.isOpened():
-        print(f"Could not open background clip: {clip_path}. Using camera frame as background.")
+        print(f"Could not open intro clip: {clip_path}. Using field image only.")
         return None
 
     return clip_cap
 
 
-def read_background_frame(clip_cap, width, height):
+def read_intro_frame(clip_cap, width, height):
     if clip_cap is None:
         return None
 
     ok, clip_frame = clip_cap.read()
     if not ok or clip_frame is None:
-        clip_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        ok, clip_frame = clip_cap.read()
-        if not ok or clip_frame is None:
-            return None
+        return None
 
     if clip_frame.shape[0] != height or clip_frame.shape[1] != width:
         clip_frame = cv2.resize(clip_frame, (width, height), interpolation=cv2.INTER_LINEAR)
     return clip_frame
+
+
+def load_field_background(width, height):
+    field_path = os.path.join(os.path.dirname(__file__), FIELD_BACKGROUND_FILENAME)
+    if not os.path.exists(field_path):
+        print(f"Field image not found: {field_path}. Using camera frame as fallback background.")
+        return None
+
+    field_image = cv2.imread(field_path, cv2.IMREAD_COLOR)
+    if field_image is None:
+        print(f"Could not read field image: {field_path}. Using camera frame as fallback background.")
+        return None
+
+    if field_image.shape[0] != height or field_image.shape[1] != width:
+        field_image = cv2.resize(field_image, (width, height), interpolation=cv2.INTER_LINEAR)
+    return field_image
 
 
 def process_wait_phase_commands():
@@ -330,27 +315,12 @@ def process_wait_phase_commands():
 
     push_event({
         "type": "status",
-        "message": "Python is playing intro clip...",
-    })
-    play_intro_clip()
-    push_event({
-        "type": "status",
-        "message": "Intro finished. Camera feed is ready.",
+        "message": "Intro command ignored. Video plays once on first Start Game.",
     })
 
 
 server_thread = threading.Thread(target=start_websocket_server, daemon=True)
 server_thread.start()
-
-push_event({
-    "type": "status",
-    "message": "Python is playing intro clip...",
-})
-play_intro_clip()
-push_event({
-    "type": "status",
-    "message": "Intro finished. Camera feed is ready.",
-})
 
 fallback_cap, fallback_camera_index = open_local_fallback_camera()
 if not fallback_cap:
@@ -422,7 +392,8 @@ frame = frame_packet["frame"]
 print(f"Detection source selected: {frame_packet['sourceLabel']}")
 
 cam_h, cam_w = frame.shape[:2]
-background_clip_cap = open_looping_background_clip()
+intro_clip_cap = open_intro_clip()
+field_background = load_field_background(cam_w, cam_h)
 
 scale_x = cam_w / GUIDE_W
 scale_y = cam_h / GUIDE_H
@@ -467,6 +438,8 @@ finish_line_b = tuple((end_pt - finish_perp * line_half).astype(int))
 game = reset_game()
 push_event(make_state_payload("idle"))
 last_source_label = ""
+intro_video_active = False
+intro_video_started_at = 0.0
 
 try:
     while True:
@@ -477,6 +450,21 @@ try:
                 break
 
             if command == "arm":
+                if not intro_has_played:
+                    intro_has_played = True
+                    if intro_clip_cap is not None:
+                        intro_clip_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        intro_video_active = True
+                        intro_video_started_at = time.time()
+                        push_event({
+                            "type": "status",
+                            "message": "Race intro video started (10s).",
+                        })
+                    else:
+                        push_event({
+                            "type": "status",
+                            "message": "Intro video unavailable. Starting game on field image.",
+                        })
                 game = reset_game()
                 game["game_running"] = True
                 game["start_time"] = time.time()
@@ -496,12 +484,7 @@ try:
             elif command == "play_intro":
                 push_event({
                     "type": "status",
-                    "message": "Python is playing intro clip...",
-                })
-                play_intro_clip()
-                push_event({
-                    "type": "status",
-                    "message": "Intro finished. Camera feed is ready.",
+                    "message": "Intro command ignored. Video plays once (10s) on first Start Game.",
                 })
 
         frame_packet = read_next_frame(fallback_cap, local_fallback_source_label)
@@ -522,9 +505,31 @@ try:
         if detection_frame.shape[0] != cam_h or detection_frame.shape[1] != cam_w:
             detection_frame = cv2.resize(detection_frame, (cam_w, cam_h), interpolation=cv2.INTER_LINEAR)
 
-        frame = read_background_frame(background_clip_cap, cam_w, cam_h)
+        frame = None
+        if intro_video_active:
+            intro_elapsed = time.time() - intro_video_started_at
+            if intro_elapsed >= INTRO_VIDEO_MAX_SECONDS:
+                intro_video_active = False
+                push_event({
+                    "type": "status",
+                    "message": "Intro finished. Switched to field view.",
+                })
+            else:
+                intro_frame = read_intro_frame(intro_clip_cap, cam_w, cam_h)
+                if intro_frame is None:
+                    intro_video_active = False
+                    push_event({
+                        "type": "status",
+                        "message": "Intro ended early. Switched to field view.",
+                    })
+                else:
+                    frame = intro_frame
+
         if frame is None:
-            frame = detection_frame.copy()
+            if field_background is not None:
+                frame = field_background.copy()
+            else:
+                frame = detection_frame.copy()
 
         hsv = cv2.cvtColor(detection_frame, cv2.COLOR_BGR2HSV)
         green_mask = cv2.inRange(hsv, lower, upper)
@@ -674,8 +679,8 @@ try:
 finally:
     if fallback_cap is not None:
         fallback_cap.release()
-    if background_clip_cap is not None:
-        background_clip_cap.release()
+    if intro_clip_cap is not None:
+        intro_clip_cap.release()
     cv2.destroyAllWindows()
     if server_loop is not None:
         server_loop.call_soon_threadsafe(server_loop.stop)
