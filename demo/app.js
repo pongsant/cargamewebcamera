@@ -11,6 +11,24 @@ if (exitBtn) {
   });
 }
 
+const initTopBarScrollAnimation = () => {
+  const topBar = document.querySelector(".top-bar");
+  if (!topBar || !document.body.classList.contains("dashboard-mode")) return;
+
+  let lastY = window.scrollY || 0;
+  const update = () => {
+    const currentY = window.scrollY || 0;
+    document.body.classList.toggle("dashboard-scrolled", currentY > 8);
+    document.body.classList.toggle("dashboard-scroll-down", currentY > lastY && currentY > 28);
+    lastY = currentY;
+  };
+
+  update();
+  window.addEventListener("scroll", update, { passive: true });
+};
+
+initTopBarScrollAnimation();
+
 const getBackendSocketUrl = () => {
   const backendProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const backendHost = window.location.hostname || "localhost";
@@ -246,6 +264,15 @@ const resultRawTimeEl = document.getElementById("resultRawTime");
 const resultPenaltySummaryEl = document.getElementById("resultPenaltySummary");
 const resultFinalTimeEl = document.getElementById("resultFinalTime");
 
+const setStartStopButtonsState = (startButton, stopButton, running) => {
+  if (!startButton || !stopButton) return;
+  const isRunning = Boolean(running);
+  startButton.classList.toggle("btn-accent", !isRunning);
+  stopButton.classList.toggle("btn-accent", isRunning);
+  startButton.classList.toggle("is-active-control", !isRunning);
+  stopButton.classList.toggle("is-active-control", isRunning);
+};
+
 if (timerEl && startBtn && stopBtn && resetBtn) {
   const backendUrl = getBackendSocketUrl();
 
@@ -415,23 +442,17 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
       const rectHeight = Math.max(8, height - (inset * 2));
       const cornerRadius = Math.min(16, rectHeight * 0.32, rectWidth * 0.32);
 
-      const frameFill = context.createLinearGradient(0, inset, 0, height - inset);
-      frameFill.addColorStop(0, "rgba(255, 255, 255, 0.74)");
-      frameFill.addColorStop(1, "rgba(255, 255, 255, 0.94)");
-      context.fillStyle = frameFill;
-      drawRoundedRectPath(inset, inset, rectWidth, rectHeight, cornerRadius);
-      context.fill();
+      const activeColor = "229, 57, 53";
+      const activeStrength = running ? 1 : 0.56;
 
-      const activeColor = running ? "255, 42, 42" : "0, 0, 0";
-
-      context.strokeStyle = `rgba(${activeColor}, ${0.16 + (focus * 0.18)})`;
+      context.strokeStyle = `rgba(${activeColor}, ${(0.16 + (focus * 0.18)) * activeStrength})`;
       context.lineWidth = 1.1 + (focus * 0.35);
       drawRoundedRectPath(inset, inset, rectWidth, rectHeight, cornerRadius);
       context.stroke();
 
       const pulseBand = context.createLinearGradient(0, height * 0.5, width, height * 0.5);
       pulseBand.addColorStop(0, `rgba(${activeColor}, 0)`);
-      pulseBand.addColorStop(0.5, `rgba(${activeColor}, ${0.16 + (focus * 0.22)})`);
+      pulseBand.addColorStop(0.5, `rgba(${activeColor}, ${(0.16 + (focus * 0.22)) * activeStrength})`);
       pulseBand.addColorStop(1, `rgba(${activeColor}, 0)`);
       context.strokeStyle = pulseBand;
       context.lineWidth = 1.2 + (focus * 0.4);
@@ -480,7 +501,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
         const pulse = 0.76 + ((Math.sin((timeMs * 0.0042) + particle.phase) + 1) * 0.24);
         const radius = particle.size * (0.6 + (focus * 0.36)) * pulse;
         context.globalAlpha = alpha;
-        context.fillStyle = running ? "#ff2a2a" : "#000000";
+        context.fillStyle = running ? "#ff2a2a" : "#e53935";
         context.beginPath();
         context.arc(x, y, radius, 0, TAU);
         context.fill();
@@ -488,7 +509,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
       if (flash > 0.01) {
         context.globalAlpha = Math.min(0.22, flash * 0.28);
-        context.strokeStyle = running ? "rgba(255, 42, 42, 0.9)" : "rgba(0, 0, 0, 0.9)";
+        context.strokeStyle = running ? "rgba(255, 42, 42, 0.9)" : "rgba(229, 57, 53, 0.9)";
         context.lineWidth = 2;
         drawRoundedRectPath(
           inset + 1,
@@ -554,6 +575,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
   const timerFxController = createTimerFieldEffect();
   if (timerEl) timerEl.textContent = TIMER_ZERO_TEXT;
+  setStartStopButtonsState(startBtn, stopBtn, false);
 
   const formatTime = (ms) => {
     const totalCentiseconds = Math.floor(ms / 10);
@@ -941,6 +963,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     updatePenaltyUi(0, 0);
     resetFrontendTimer();
     startFrontendTimer();
+    setStartStopButtonsState(startBtn, stopBtn, true);
     setRaceStatus("Start command sent. Waiting for backend updates.");
 
     const sent = sendBackendMessage({ type: "arm" });
@@ -951,12 +974,14 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
   stopBtn.addEventListener("click", () => {
     stopFrontendTimer();
+    setStartStopButtonsState(startBtn, stopBtn, false);
     sendBackendMessage({ type: "stop" });
     setRaceStatus("Frontend timer stopped.");
   });
 
   resetBtn.addEventListener("click", () => {
     resetFrontendTimer();
+    setStartStopButtonsState(startBtn, stopBtn, false);
     updatePenaltyUi(0, 0);
     hideFinalResult();
     sendBackendMessage({ type: "reset" });
@@ -1644,12 +1669,16 @@ if (cameraStatus) {
 }
 
 if (sourceSupported && enableCamsBtn && stopCamsBtn) {
+  setStartStopButtonsState(enableCamsBtn, stopCamsBtn, false);
+
   enableCamsBtn.addEventListener("click", () => {
+    setStartStopButtonsState(enableCamsBtn, stopCamsBtn, true);
     enableCameras();
   });
 
   stopCamsBtn.addEventListener("click", () => {
     stopAllCameras();
+    setStartStopButtonsState(enableCamsBtn, stopCamsBtn, false);
   });
 
   Object.entries(slots).forEach(([slotKey, slot]) => {
