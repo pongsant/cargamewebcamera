@@ -544,12 +544,55 @@ const FRAME_STREAM_FPS = 8;
 const FRAME_STREAM_QUALITY = 0.6;
 const FRAME_STREAM_MAX_WIDTH = 640;
 const FRAME_STREAM_RECONNECT_MS = 1500;
+const INTRO_COMMAND_TIMEOUT_MS = 2500;
 let frameSocket = null;
 let frameReconnectTimeoutId = null;
 let framePumpIntervalId = null;
 let manualFrameSocketClose = false;
 const frameCaptureCanvas = document.createElement("canvas");
 const frameCaptureContext = frameCaptureCanvas.getContext("2d", { alpha: false });
+
+const requestPythonIntroPlayback = () => {
+  const payloadText = JSON.stringify({ type: "play_intro" });
+
+  if (frameSocket && frameSocket.readyState === WebSocket.OPEN) {
+    frameSocket.send(payloadText);
+    return;
+  }
+
+  let introSocket;
+  try {
+    introSocket = new WebSocket(frameBackendUrl);
+  } catch (error) {
+    console.error("Could not create intro socket:", error);
+    return;
+  }
+
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    if (introSocket && (
+      introSocket.readyState === WebSocket.OPEN ||
+      introSocket.readyState === WebSocket.CONNECTING
+    )) {
+      introSocket.close();
+    }
+  };
+
+  introSocket.addEventListener("open", () => {
+    introSocket.send(payloadText);
+    finish();
+  });
+
+  introSocket.addEventListener("error", () => {
+    finish();
+  });
+
+  window.setTimeout(() => {
+    finish();
+  }, INTRO_COMMAND_TIMEOUT_MS);
+};
 
 const FRONT_LABEL_HINTS = [
   "iphone",
@@ -623,6 +666,7 @@ const refreshProgramFeed = () => {
   if (!mainVideo || !programSelect) return;
   const selected = slots[programSelect.value];
   mainVideo.srcObject = selected ? selected.stream : null;
+  if (selected?.stream) mainVideo.play().catch(() => {});
 };
 
 const normalizeDeviceLabel = (label) => (
@@ -1059,7 +1103,8 @@ const enableCameras = async () => {
   }
 
   try {
-    updateStatus("Preparing Prum iPhone 17 Pro and FaceTime sources...");
+    updateStatus("Playing intro on Python and preparing camera sources...");
+    requestPythonIntroPlayback();
 
     if (cameraSupported) {
       try {

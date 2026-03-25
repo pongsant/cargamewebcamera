@@ -2,6 +2,7 @@ import asyncio
 import base64
 import contextlib
 import json
+import os
 import queue
 import threading
 import time
@@ -20,6 +21,8 @@ FRAME_QUEUE_MAX = 4
 FRAME_IDLE_SLEEP = 0.01
 WEBSOCKET_MAX_SIZE = 8_000_000
 WAIT_FOR_BROWSER_FIRST_FRAME_SECONDS = 10.0
+INTRO_VIDEO_FILENAME = "Race_Track_done.MP4"
+INTRO_FALLBACK_FPS = 30.0
 
 command_queue = queue.Queue()
 frame_queue = queue.Queue(maxsize=FRAME_QUEUE_MAX)
@@ -136,7 +139,7 @@ async def handle_client(websocket):
                 continue
 
             command_type = payload.get("type")
-            if command_type in {"arm", "reset", "stop"}:
+            if command_type in {"arm", "reset", "stop", "play_intro"}:
                 command_queue.put(command_type)
                 continue
 
@@ -253,6 +256,57 @@ def read_next_frame(capture, local_source_label):
     )
 
 
+def play_intro_clip():
+    intro_path = os.path.join(os.path.dirname(__file__), INTRO_VIDEO_FILENAME)
+    if not os.path.exists(intro_path):
+        print(f"Intro clip not found: {intro_path}. Skipping intro.")
+        return
+
+    intro_cap = cv2.VideoCapture(intro_path)
+    if not intro_cap.isOpened():
+        print(f"Could not open intro clip: {intro_path}. Skipping intro.")
+        return
+
+    fps = intro_cap.get(cv2.CAP_PROP_FPS)
+    if fps is None or fps <= 0:
+        fps = INTRO_FALLBACK_FPS
+    frame_delay_ms = max(1, int(round(1000.0 / fps)))
+
+    print(f"Playing intro clip: {INTRO_VIDEO_FILENAME}")
+    while True:
+        ok, intro_frame = intro_cap.read()
+        if not ok or intro_frame is None:
+            break
+
+        cv2.imshow("frame", intro_frame)
+        key = cv2.waitKey(frame_delay_ms) & 0xFF
+        if key in (27, ord(" ")):
+            break
+
+    intro_cap.release()
+
+
+def process_wait_phase_commands():
+    try:
+        command = command_queue.get_nowait()
+    except queue.Empty:
+        return
+
+    if command != "play_intro":
+        command_queue.put(command)
+        return
+
+    push_event({
+        "type": "status",
+        "message": "Python is playing intro clip...",
+    })
+    play_intro_clip()
+    push_event({
+        "type": "status",
+        "message": "Intro finished. Camera feed is ready.",
+    })
+
+
 server_thread = threading.Thread(target=start_websocket_server, daemon=True)
 server_thread.start()
 
@@ -304,17 +358,20 @@ frame_packet = None
 
 if fallback_cap is None:
     while frame_packet is None:
+        process_wait_phase_commands()
         frame_packet = pop_latest_browser_frame()
         if frame_packet is None:
             time.sleep(FRAME_IDLE_SLEEP)
 else:
     wait_deadline = time.time() + WAIT_FOR_BROWSER_FIRST_FRAME_SECONDS
     while frame_packet is None and time.time() < wait_deadline:
+        process_wait_phase_commands()
         frame_packet = pop_latest_browser_frame()
         if frame_packet is None:
             time.sleep(FRAME_IDLE_SLEEP)
 
     while frame_packet is None:
+        process_wait_phase_commands()
         frame_packet = read_next_frame(fallback_cap, local_fallback_source_label)
         if frame_packet is None:
             time.sleep(FRAME_IDLE_SLEEP)
@@ -393,6 +450,16 @@ try:
                         final_time=game["final_time"],
                         penalty_count=game["outside_count"],
                     ))
+            elif command == "play_intro":
+                push_event({
+                    "type": "status",
+                    "message": "Python is playing intro clip...",
+                })
+                play_intro_clip()
+                push_event({
+                    "type": "status",
+                    "message": "Intro finished. Camera feed is ready.",
+                })
 
         frame_packet = read_next_frame(fallback_cap, local_fallback_source_label)
         if frame_packet is None:
