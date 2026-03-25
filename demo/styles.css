@@ -2613,4 +2613,85 @@ body.dashboard-mode #stopCamsBtn {
   background: #ffffff !important;
   color: #000000 !important;
   box-shadow: none !important;
+  min-width: clamp(138px, 12vw, 188px);
+  padding: clamp(0.64rem, 0.92vw, 0.92rem) clamp(1.22rem, 1.95vw, 2rem) !important;
+  font-size: clamp(1rem, 1.22vw, 1.22rem) !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Keep Race Result area stable (no drifting/jumping on hover/focus) */
+body.dashboard-mode .race-results-shell {
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+}
+
+body.dashboard-mode .race-results-shell,
+body.dashboard-mode .race-results-shell * {
+  animation: none !important;
+}
+
+body.dashboard-mode .race-results-shell .results-controls .btn,
+body.dashboard-mode .race-results-shell .results-controls .btn:hover,
+body.dashboard-mode .race-results-shell .results-controls .btn:active,
+body.dashboard-mode .race-results-shell .results-table-panel .btn,
+body.dashboard-mode .race-results-shell .results-table-panel .btn:hover,
+body.dashboard-mode .race-results-shell .results-table-panel .btn:active {
+  transform: none !important;
+  transition: none !important;
+}
+
+/* Lock Race Result section height to stop gradual page growth */
+body.dashboard-mode .results-grid {
+  align-items: stretch;
+  height: clamp(250px, 34vh, 420px);
+  min-height: clamp(250px, 34vh, 420px);
+  max-height: clamp(250px, 34vh, 420px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+body.dashboard-mode .results-controls,
+body.dashboard-mode .results-table-panel {
+  height: clamp(250px, 34vh, 420px) !important;
+  min-height: clamp(250px, 34vh, 420px) !important;
+  max-height: clamp(250px, 34vh, 420px) !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
+
+body.dashboard-mode .results-table-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+body.dashboard-mode .results-controls {
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+body.dashboard-mode .results-table {
+  min-height: 0;
+  width: 100%;
+}
+
+body.dashboard-mode .results-table tbody {
+  display: block;
+  max-height: clamp(160px, 24vh, 310px);
+  overflow-y: auto;
+}
+
+body.dashboard-mode .results-table thead,
+body.dashboard-mode .results-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+body.dashboard-mode #scoreStatus {
+  min-height: 1.25em;
+  max-height: 1.25em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
