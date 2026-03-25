@@ -20,107 +20,206 @@ const getBackendSocketUrl = () => {
 const mount = document.getElementById("bg-canvas");
 
 if (mount) {
-  import("https://unpkg.com/three@0.164.1/build/three.module.js").then((THREE) => {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 280);
-    camera.position.set(0, 20, 44);
+  const TAU = Math.PI * 2;
+  const canvas = document.createElement("canvas");
+  canvas.className = "bg-particle-canvas";
+  mount.appendChild(canvas);
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    mount.appendChild(renderer.domElement);
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let dpr = 1;
+    let width = 1;
+    let height = 1;
+    let frameId = null;
+    let flowNodes = [];
+    let stars = [];
 
-    const segX = window.innerWidth < 900 ? 92 : 128;
-    const segY = window.innerWidth < 900 ? 92 : 128;
+    const createFlowNodes = (count) => (
+      Array.from({ length: count }, (_, index) => ({
+        baseAngle: (index / count) * TAU,
+        phase: Math.random() * TAU,
+        speed: 0.00006 + (Math.random() * 0.00012),
+        radiusAmp: 0.06 + (Math.random() * 0.18),
+        drift: 0.35 + (Math.random() * 1.15),
+        bend: 0.25 + (Math.random() * 0.85),
+        size: 0.65 + (Math.random() * 1.25),
+        alpha: 0.05 + (Math.random() * 0.19),
+      }))
+    );
 
-    const makeTerrain = (opacity, y, z, scale, color) => {
-      const geometry = new THREE.PlaneGeometry(170, 170, segX, segY);
-      geometry.rotateX(-Math.PI * 0.488);
+    const createStars = (count) => (
+      Array.from({ length: count }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: 0.5 + (Math.random() * 1.6),
+        alpha: 0.05 + (Math.random() * 0.2),
+        speed: 0.0006 + (Math.random() * 0.0016),
+        phase: Math.random() * TAU,
+      }))
+    );
 
-      const material = new THREE.MeshBasicMaterial({
-        color,
-        wireframe: true,
-        transparent: true,
-        opacity,
-      });
+    const setup = () => {
+      const rect = mount.getBoundingClientRect();
+      width = Math.max(1, rect.width);
+      height = Math.max(1, rect.height);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(0, y, z);
-      mesh.scale.setScalar(scale);
-      scene.add(mesh);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      return {
-        mesh,
-        base: new Float32Array(geometry.attributes.position.array),
-        position: geometry.attributes.position,
-      };
+      flowNodes = createFlowNodes(width < 900 ? 280 : 460);
+      stars = createStars(width < 900 ? 180 : 320);
     };
 
-    const front = makeTerrain(0.12, -8, 0, 1, 0xffffff);
-    const back = makeTerrain(0.11, -11, -14, 1.1, 0x000000);
+    const drawBackdrop = (time) => {
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+      const radius = Math.min(width, height) * 0.58;
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let rafId = null;
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, "#050505");
+      gradient.addColorStop(0.48, "#0d0d0e");
+      gradient.addColorStop(1, "#141416");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      const ringA = ctx.createRadialGradient(cx - (radius * 0.35), cy, 0, cx - (radius * 0.35), cy, radius * 0.82);
+      ringA.addColorStop(0, "rgba(255, 255, 255, 0.14)");
+      ringA.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = ringA;
+      ctx.fillRect(0, 0, width, height);
+
+      const ringB = ctx.createRadialGradient(cx + (radius * 0.34), cy, 0, cx + (radius * 0.34), cy, radius * 0.84);
+      ringB.addColorStop(0, "rgba(180, 180, 180, 0.12)");
+      ringB.addColorStop(1, "rgba(180, 180, 180, 0)");
+      ctx.fillStyle = ringB;
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.fillStyle = "#f8f8f8";
+      for (let i = 0; i < stars.length; i += 1) {
+        const star = stars[i];
+        const twinkle = 0.3 + (0.7 * (0.5 + (0.5 * Math.sin((time * star.speed) + star.phase))));
+        ctx.globalAlpha = star.alpha * twinkle;
+        ctx.fillRect(star.x, star.y, star.size, star.size);
+      }
+      ctx.globalAlpha = 1;
+    };
 
     const animate = (timeMs) => {
-      const t = timeMs * 0.00016;
+      drawBackdrop(timeMs);
+
+      const cx = width * 0.5;
+      const cy = height * 0.52;
+      const baseRadius = Math.min(width, height) * 0.36;
+      const innerRadius = baseRadius * 0.22;
+      const rotation = reduceMotion ? 0 : timeMs * 0.00005;
+      const points = [];
+
+      for (let i = 0; i < flowNodes.length; i += 1) {
+        const node = flowNodes[i];
+        const wobble = reduceMotion ? 0 : Math.sin((timeMs * node.speed) + node.phase) * 0.26 * node.drift;
+        const angle = node.baseAngle + rotation + wobble;
+        const radius = baseRadius * (0.8 + ((reduceMotion ? 0 : Math.sin((timeMs * node.speed * 1.7) + (node.phase * 1.3))) * node.radiusAmp));
+        const px = cx + (Math.cos(angle) * radius);
+        const py = cy + (Math.sin(angle) * radius * 0.88);
+        const tone = 62 - (12 * Math.cos(angle));
+
+        points.push({ x: px, y: py, angle, tone, node });
+      }
+
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      for (let i = 0; i < points.length; i += 1) {
+        const point = points[i];
+        const pairIndex = (i + Math.floor(points.length * 0.5)) % points.length;
+        const pair = points[pairIndex];
+        const bend = point.node.bend * innerRadius;
+
+        const c1x = cx + (Math.cos(point.angle + (Math.PI * 0.5)) * bend);
+        const c1y = cy + (Math.sin(point.angle + (Math.PI * 0.5)) * bend * 0.8);
+        const c2x = cx + (Math.cos(pair.angle - (Math.PI * 0.5)) * bend);
+        const c2y = cy + (Math.sin(pair.angle - (Math.PI * 0.5)) * bend * 0.8);
+
+        ctx.strokeStyle = `hsla(0, 0%, ${point.tone}%, ${0.06 + point.node.alpha})`;
+        ctx.lineWidth = 0.38 + (point.node.size * 0.34);
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y);
+        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, pair.x, pair.y);
+        ctx.stroke();
+      }
+
+      for (let i = 0; i < points.length; i += 1) {
+        const point = points[i];
+        const next = points[(i + 1) % points.length];
+        ctx.strokeStyle = `hsla(0, 0%, ${point.tone - 8}%, 0.12)`;
+        ctx.lineWidth = 0.34;
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y);
+        ctx.lineTo(next.x, next.y);
+        ctx.stroke();
+      }
+
+      ctx.shadowColor = "rgba(255, 255, 255, 0.45)";
+      ctx.shadowBlur = 5;
+      for (let i = 0; i < points.length; i += 1) {
+        const point = points[i];
+        const dotAlpha = 0.3 + (0.7 * (0.5 + (0.5 * Math.sin((timeMs * 0.0012) + point.node.phase))));
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.26 + (dotAlpha * 0.58)})`;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 0.7 + point.node.size * 0.55, 0, TAU);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      const centerGlow = ctx.createRadialGradient(cx, cy, innerRadius * 0.2, cx, cy, innerRadius * 1.7);
+      centerGlow.addColorStop(0, "rgba(255, 255, 255, 0.12)");
+      centerGlow.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = centerGlow;
+      ctx.fillRect(0, 0, width, height);
 
       if (!reduceMotion) {
-        const f = front.position.array;
-        for (let i = 0; i < f.length; i += 3) {
-          const x = front.base[i];
-          const z = front.base[i + 2];
-          const w1 = Math.sin((x * 0.21) + (t * 3.0)) * 1.9;
-          const w2 = Math.cos((z * 0.16) - (t * 2.2)) * 1.5;
-          const w3 = Math.sin(((x + z) * 0.11) + (t * 1.4)) * 0.95;
-          f[i + 1] = front.base[i + 1] + w1 + w2 + w3;
-        }
-        front.position.needsUpdate = true;
-
-        const b = back.position.array;
-        for (let i = 0; i < b.length; i += 3) {
-          const x = back.base[i];
-          const z = back.base[i + 2];
-          const w1 = Math.sin((x * 0.18) + (t * 2.4) + 0.9) * 1.2;
-          const w2 = Math.cos((z * 0.14) - (t * 1.7) + 0.4) * 1.0;
-          b[i + 1] = back.base[i + 1] + w1 + w2;
-        }
-        back.position.needsUpdate = true;
-
-        camera.position.x = Math.sin(t * 0.53) * 3.1;
-        camera.position.y = 20 + Math.sin(t * 0.41) * 1.3;
-        camera.position.z = 44 + Math.cos(t * 0.29) * 1.1;
-        camera.lookAt(0, -4.2, 0);
+        frameId = requestAnimationFrame(animate);
+      } else {
+        // Keep one static render when reduced motion is requested.
+        frameId = null;
       }
-
-      renderer.render(scene, camera);
-      rafId = requestAnimationFrame(animate);
     };
 
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    });
+    const reset = () => {
+      setup();
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+      if (reduceMotion) {
+        animate(0);
+      } else {
+        frameId = requestAnimationFrame(animate);
+      }
+    };
 
+    reset();
+    window.addEventListener("resize", reset, { passive: true });
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden && rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      } else if (!document.hidden && !rafId) {
-        rafId = requestAnimationFrame(animate);
+      if (document.hidden && frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      } else if (!document.hidden && frameId === null) {
+        if (reduceMotion) {
+          animate(0);
+        } else {
+          frameId = requestAnimationFrame(animate);
+        }
       }
     });
-
-    rafId = requestAnimationFrame(animate);
-  }).catch((error) => {
-    console.error("Failed to load Three.js background:", error);
-  });
+  }
 }
 
 const timerEl = document.getElementById("timer");
@@ -128,6 +227,9 @@ const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const resetBtn = document.getElementById("resetBtn");
 const scoreboardBody = document.getElementById("scoreboardBody");
+const podiumP1Name = document.getElementById("podiumP1Name");
+const podiumP2Name = document.getElementById("podiumP2Name");
+const podiumP3Name = document.getElementById("podiumP3Name");
 const playerNameInput = document.getElementById("playerNameInput");
 const addPlayerBtn = document.getElementById("addPlayerBtn");
 const playerSelect = document.getElementById("playerSelect");
@@ -156,6 +258,193 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   let latestPenaltyTime = 0;
   let pendingCommand = null;
   const players = [];
+  const timerDisplayFrame = document.getElementById("timerDisplayFrame");
+  const timerFxCanvas = document.getElementById("timerFxCanvas");
+
+  const createNoopTimerFx = () => ({
+    setRunning: () => {},
+    reset: () => {},
+    destroy: () => {},
+  });
+
+  const createTimerFieldEffect = () => {
+    if (!timerDisplayFrame || !timerFxCanvas) return createNoopTimerFx();
+
+    const context = timerFxCanvas.getContext("2d");
+    if (!context) return createNoopTimerFx();
+
+    const TAU = Math.PI * 2;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const pickDigit = () => String(Math.floor(Math.random() * 10));
+    const particleCount = window.innerWidth < 900 ? 160 : 240;
+
+    let width = 1;
+    let height = 1;
+    let dpr = 1;
+    let frameId = null;
+    let lastTs = 0;
+    let running = false;
+    let energy = 0.35;
+    let flash = 0;
+    let destroyed = false;
+
+    const particles = Array.from({ length: particleCount }, () => ({
+      digit: pickDigit(),
+      theta: Math.random() * TAU,
+      orbit: Math.random(),
+      lane: (Math.random() * 2) - 1,
+      size: 11 + (Math.random() * 16),
+      speed: (0.00045 + (Math.random() * 0.001)) * (Math.random() < 0.9 ? 1 : -1),
+      alpha: 0.16 + (Math.random() * 0.64),
+      phase: Math.random() * TAU,
+      warp: 0.6 + (Math.random() * 1.4),
+    }));
+
+    const drawRoundedRect = (x, y, w, h, radius) => {
+      const r = Math.max(0, Math.min(radius, Math.min(w, h) * 0.5));
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.lineTo(x + w - r, y);
+      context.quadraticCurveTo(x + w, y, x + w, y + r);
+      context.lineTo(x + w, y + h - r);
+      context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      context.lineTo(x + r, y + h);
+      context.quadraticCurveTo(x, y + h, x, y + h - r);
+      context.lineTo(x, y + r);
+      context.quadraticCurveTo(x, y, x + r, y);
+      context.closePath();
+    };
+
+    const resize = () => {
+      const rect = timerDisplayFrame.getBoundingClientRect();
+      width = Math.max(1, rect.width);
+      height = Math.max(1, rect.height);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      timerFxCanvas.width = Math.floor(width * dpr);
+      timerFxCanvas.height = Math.floor(height * dpr);
+      timerFxCanvas.style.width = `${width}px`;
+      timerFxCanvas.style.height = `${height}px`;
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const render = (timeMs) => {
+      if (destroyed) return;
+
+      const dt = lastTs ? Math.min(32, timeMs - lastTs) : 16;
+      lastTs = timeMs;
+
+      const targetEnergy = running ? 1 : 0.34;
+      energy += (targetEnergy - energy) * 0.08;
+      flash = Math.max(0, flash - (dt * 0.0045));
+
+      context.clearRect(0, 0, width, height);
+
+      context.save();
+      drawRoundedRect(0.5, 0.5, width - 1, height - 1, Math.min(20, height * 0.24));
+      context.clip();
+
+      const mist = context.createRadialGradient(width * 0.22, height * 0.5, 0, width * 0.5, height * 0.5, width * 0.74);
+      mist.addColorStop(0, `rgba(255, 255, 255, ${0.06 + (flash * 0.1)})`);
+      mist.addColorStop(1, "rgba(255, 255, 255, 0)");
+      context.fillStyle = mist;
+      context.fillRect(0, 0, width, height);
+
+      const cx = width * 0.5;
+      const cy = height * 0.53;
+      const radiusX = width * 0.44;
+      const radiusY = height * 0.34;
+      const speedScale = reduceMotion ? 0.28 : 1;
+
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+
+      for (let i = 0; i < particles.length; i += 1) {
+        const particle = particles[i];
+        particle.theta += particle.speed * dt * (0.5 + (energy * 1.2)) * speedScale;
+
+        const swirl = particle.theta + (Math.sin((timeMs * 0.0011 * particle.warp) + particle.phase) * 0.18);
+        const depth = (Math.cos(swirl + (particle.phase * 0.7)) + 1) * 0.5;
+        const orbit = 0.28 + (particle.orbit * 0.78);
+        const spread = 0.58 + (depth * 0.46);
+
+        const x = cx + (Math.cos(swirl) * radiusX * orbit * spread);
+        const y = cy
+          + (Math.sin((swirl * 1.22) + (particle.phase * 0.32)) * radiusY * (0.42 + (particle.orbit * 0.72)))
+          + (particle.lane * height * 0.09 * (1 - depth));
+
+        const alpha = Math.min(1, particle.alpha * (0.2 + (depth * 0.82)) * (0.42 + (energy * 0.7)));
+        if (alpha < 0.025) continue;
+
+        const fontSize = particle.size * (0.58 + (depth * 0.9));
+        context.globalAlpha = alpha;
+        context.fillStyle = depth > 0.72 ? "#ffffff" : depth > 0.42 ? "#d2d2d2" : "#8f8f8f";
+        context.font = `${fontSize.toFixed(2)}px "HelveticaNeueCustom", "Helvetica Neue", Arial, sans-serif`;
+        context.fillText(particle.digit, x, y);
+
+        if (Math.random() < (0.003 + (energy * 0.008))) {
+          particle.digit = pickDigit();
+        }
+      }
+
+      context.globalAlpha = 1;
+      const beam = context.createLinearGradient(0, cy, width, cy);
+      beam.addColorStop(0, "rgba(255, 255, 255, 0)");
+      beam.addColorStop(0.5, `rgba(255, 255, 255, ${0.08 + (energy * 0.14)})`);
+      beam.addColorStop(1, "rgba(255, 255, 255, 0)");
+      context.strokeStyle = beam;
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(width * 0.08, cy);
+      context.lineTo(width * 0.92, cy);
+      context.stroke();
+
+      context.restore();
+      frameId = requestAnimationFrame(render);
+    };
+
+    const setRunning = (nextRunning) => {
+      running = Boolean(nextRunning);
+      timerDisplayFrame.classList.toggle("is-running", running);
+      timerDisplayFrame.classList.toggle("is-paused", !running);
+    };
+
+    const reset = () => {
+      running = false;
+      flash = 1;
+      lastTs = 0;
+
+      particles.forEach((particle) => {
+        particle.theta = Math.random() * TAU;
+        particle.digit = pickDigit();
+      });
+
+      timerDisplayFrame.classList.remove("is-running");
+      timerDisplayFrame.classList.add("is-paused");
+      timerDisplayFrame.classList.remove("is-reset");
+      // Trigger reset pulse animation on each reset click.
+      void timerDisplayFrame.offsetWidth;
+      timerDisplayFrame.classList.add("is-reset");
+    };
+
+    const destroy = () => {
+      destroyed = true;
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+      window.removeEventListener("resize", resize);
+    };
+
+    resize();
+    setRunning(false);
+    frameId = requestAnimationFrame(render);
+    window.addEventListener("resize", resize, { passive: true });
+
+    return { setRunning, reset, destroy };
+  };
+
+  const timerFxController = createTimerFieldEffect();
 
   const formatTime = (ms) => {
     const totalCentiseconds = Math.floor(ms / 10);
@@ -181,16 +470,21 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
   const startFrontendTimer = () => {
     if (timerRafId !== null) return;
+    timerFxController.setRunning(true);
     startTime = performance.now();
     timerRafId = requestAnimationFrame(update);
   };
 
   const stopFrontendTimer = () => {
-    if (timerRafId === null) return;
+    if (timerRafId === null) {
+      timerFxController.setRunning(false);
+      return;
+    }
     cancelAnimationFrame(timerRafId);
     timerRafId = null;
     elapsedBefore += performance.now() - startTime;
     timerEl.textContent = formatTime(elapsedBefore);
+    timerFxController.setRunning(false);
   };
 
   const resetFrontendTimer = () => {
@@ -201,6 +495,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     startTime = 0;
     elapsedBefore = 0;
     timerEl.textContent = "00:00.00";
+    timerFxController.reset();
   };
 
   const setScoreStatus = (message) => {
@@ -262,6 +557,12 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     });
   };
 
+  const setPodiumNames = (rankedPlayers) => {
+    if (podiumP1Name) podiumP1Name.textContent = rankedPlayers[0]?.name || "No Driver";
+    if (podiumP2Name) podiumP2Name.textContent = rankedPlayers[1]?.name || "No Driver";
+    if (podiumP3Name) podiumP3Name.textContent = rankedPlayers[2]?.name || "No Driver";
+  };
+
   const renderScoreboard = () => {
     if (!scoreboardBody) return;
     scoreboardBody.innerHTML = "";
@@ -270,16 +571,30 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
       .filter((player) => Number.isFinite(player.bestMs))
       .sort((a, b) => a.bestMs - b.bestMs);
 
+    setPodiumNames(ranked);
+
     if (ranked.length === 0) {
       const row = document.createElement("tr");
-      row.innerHTML = "<td>-</td><td>No score yet</td><td>--:--.--</td>";
+      row.className = "results-row results-row--empty";
+      row.innerHTML = `
+        <td class="rank-cell"><span class="rank-badge">-</span></td>
+        <td class="driver-cell">No score yet</td>
+        <td class="time-cell">--:--.--</td>
+      `;
       scoreboardBody.appendChild(row);
       return;
     }
 
     ranked.forEach((player, index) => {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${index + 1}</td><td>${player.name}</td><td>${formatTime(player.bestMs)}</td>`;
+      row.className = `results-row ${
+        index === 0 ? "results-row--first" : index === 1 ? "results-row--second" : index === 2 ? "results-row--third" : ""
+      }`.trim();
+      row.innerHTML = `
+        <td class="rank-cell"><span class="rank-badge">${index + 1}</span></td>
+        <td class="driver-cell">${player.name}</td>
+        <td class="time-cell">${formatTime(player.bestMs)}</td>
+      `;
       scoreboardBody.appendChild(row);
     });
   };
@@ -499,6 +814,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
   window.addEventListener("beforeunload", () => {
     manualSocketClose = true;
+    timerFxController.destroy();
     if (reconnectTimeoutId !== null) {
       window.clearTimeout(reconnectTimeoutId);
       reconnectTimeoutId = null;

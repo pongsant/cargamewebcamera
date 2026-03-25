@@ -8,9 +8,18 @@
 </head>
 <body class="start-mode">
   <main class="start-stage">
-    <section class="start-particle-shell" aria-label="F1 track particle morph">
-      <canvas id="trackParticleCanvas" class="start-particle-canvas"></canvas>
-      <p class="start-particle-caption">F1 Track Particle Morph</p>
+    <section class="start-particle-shell" aria-label="Race track intro video">
+      <video
+        id="startIntroVideo"
+        class="start-intro-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+      >
+        <source src="Race_Track_done.MP4" type="video/mp4" />
+      </video>
     </section>
 
     <button
@@ -27,161 +36,53 @@
     (() => {
       const START_GATE_KEY = "raceControlStarted";
       const AUTO_START_KEY = "raceControlAutoStart";
+
       const startEntryBtn = document.getElementById("startEntryBtn");
-      const particleCanvas = document.getElementById("trackParticleCanvas");
+      const startIntroVideo = document.getElementById("startIntroVideo");
 
       if (!startEntryBtn) return;
 
       let navigating = false;
-      let particleRafId = null;
-      let canvasCtx = null;
-      let dpr = 1;
-      let particleCloud = [];
-      let trackTargets = [];
-      let particles = [];
 
-      const TRACK_TEMPLATE_POINTS = [
-        [0.10, 0.56], [0.18, 0.45], [0.33, 0.37], [0.50, 0.35], [0.67, 0.42],
-        [0.79, 0.55], [0.84, 0.69], [0.76, 0.80], [0.58, 0.84], [0.42, 0.80],
-        [0.30, 0.73], [0.23, 0.63], [0.26, 0.56], [0.38, 0.57], [0.48, 0.63],
-        [0.62, 0.66], [0.70, 0.61], [0.66, 0.53], [0.53, 0.49], [0.40, 0.48],
-        [0.27, 0.50], [0.16, 0.59],
-      ];
-
-      const createCircleCloud = (count, width, height) => {
-        const cx = width * 0.5;
-        const cy = height * 0.58;
-        const radius = Math.min(width, height) * 0.22;
-        const points = [];
-        for (let i = 0; i < count; i += 1) {
-          const angle = (i / count) * Math.PI * 2;
-          const wobble = 0.72 + (Math.sin(i * 0.91) * 0.08);
-          points.push({
-            x: cx + Math.cos(angle) * radius * wobble,
-            y: cy + Math.sin(angle) * radius * wobble,
+      const ensureVideoPlayback = () => {
+        if (!startIntroVideo) return;
+        startIntroVideo.muted = true;
+        const playPromise = startIntroVideo.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {
+            // Ignore autoplay rejection; user can still continue with ENTER.
           });
         }
-        return points;
       };
 
-      const sampleClosedPath = (path, count, width, height) => {
-        const scaled = path.map(([x, y]) => ({ x: x * width, y: y * height }));
-        const segmentLengths = [];
-        let totalLength = 0;
+      const syncVideoFitMode = () => {
+        if (!startIntroVideo) return;
 
-        for (let i = 0; i < scaled.length; i += 1) {
-          const a = scaled[i];
-          const b = scaled[(i + 1) % scaled.length];
-          const len = Math.hypot(b.x - a.x, b.y - a.y);
-          segmentLengths.push(len);
-          totalLength += len;
+        const videoWidth = startIntroVideo.videoWidth || 16;
+        const videoHeight = startIntroVideo.videoHeight || 9;
+        const videoRatio = videoWidth / videoHeight;
+        const viewportRatio = window.innerWidth / Math.max(window.innerHeight, 1);
+
+        const ratioDiff = Math.abs(viewportRatio - videoRatio);
+        const shouldContain = ratioDiff > 0.36;
+
+        startIntroVideo.classList.toggle("fit-contain", shouldContain);
+      };
+
+      ensureVideoPlayback();
+      syncVideoFitMode();
+      window.addEventListener("load", ensureVideoPlayback, { once: true });
+      startIntroVideo?.addEventListener("loadedmetadata", syncVideoFitMode);
+      window.addEventListener("resize", syncVideoFitMode, { passive: true });
+      document.addEventListener("visibilitychange", () => {
+        if (!startIntroVideo) return;
+        if (document.hidden) {
+          startIntroVideo.pause();
+        } else {
+          ensureVideoPlayback();
+          syncVideoFitMode();
         }
-
-        const points = [];
-        for (let i = 0; i < count; i += 1) {
-          const distance = (i / count) * totalLength;
-          let running = 0;
-          let segmentIndex = 0;
-
-          for (; segmentIndex < segmentLengths.length; segmentIndex += 1) {
-            if (running + segmentLengths[segmentIndex] >= distance) break;
-            running += segmentLengths[segmentIndex];
-          }
-
-          const segStart = scaled[segmentIndex % scaled.length];
-          const segEnd = scaled[(segmentIndex + 1) % scaled.length];
-          const segLen = segmentLengths[segmentIndex] || 1;
-          const t = (distance - running) / segLen;
-
-          points.push({
-            x: segStart.x + ((segEnd.x - segStart.x) * t),
-            y: segStart.y + ((segEnd.y - segStart.y) * t),
-          });
-        }
-
-        return points;
-      };
-
-      const initParticles = () => {
-        if (!particleCanvas) return;
-        canvasCtx = particleCanvas.getContext("2d");
-        if (!canvasCtx) return;
-
-        const rect = particleCanvas.getBoundingClientRect();
-        dpr = Math.min(window.devicePixelRatio || 1, 2);
-        particleCanvas.width = Math.max(1, Math.floor(rect.width * dpr));
-        particleCanvas.height = Math.max(1, Math.floor(rect.height * dpr));
-        canvasCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        const width = rect.width;
-        const height = rect.height;
-        const count = width < 700 ? 500 : 860;
-
-        particleCloud = createCircleCloud(count, width, height);
-        trackTargets = sampleClosedPath(TRACK_TEMPLATE_POINTS, count, width, height);
-        particles = trackTargets.map((target, i) => ({
-          x: particleCloud[i].x,
-          y: particleCloud[i].y,
-          vx: 0,
-          vy: 0,
-          phase: (i / count) * Math.PI * 2,
-        }));
-      };
-
-      const animateParticles = (timeMs) => {
-        if (!canvasCtx || !particleCanvas) return;
-        const width = particleCanvas.width / dpr;
-        const height = particleCanvas.height / dpr;
-
-        const morph = 0.5 + (0.5 * Math.sin(timeMs * 0.00065));
-
-        canvasCtx.clearRect(0, 0, width, height);
-        canvasCtx.fillStyle = "rgba(22, 22, 22, 0.88)";
-        canvasCtx.shadowColor = "rgba(255, 255, 255, 0.4)";
-        canvasCtx.shadowBlur = 4;
-        for (let i = 0; i < particles.length; i += 1) {
-          const from = particleCloud[i];
-          const to = trackTargets[i];
-          const p = particles[i];
-
-          const tx = from.x + ((to.x - from.x) * morph);
-          const ty = from.y + ((to.y - from.y) * morph);
-
-          p.vx += (tx - p.x) * 0.04;
-          p.vy += (ty - p.y) * 0.04;
-          p.vx *= 0.86;
-          p.vy *= 0.86;
-          p.x += p.vx + Math.sin((timeMs * 0.0012) + p.phase) * 0.08;
-          p.y += p.vy + Math.cos((timeMs * 0.0011) + p.phase) * 0.08;
-
-          canvasCtx.beginPath();
-          canvasCtx.arc(p.x, p.y, 1.15, 0, Math.PI * 2);
-          canvasCtx.fill();
-        }
-        canvasCtx.shadowBlur = 0;
-
-        particleRafId = requestAnimationFrame(animateParticles);
-      };
-
-      if (particleCanvas) {
-        const setupAndAnimate = () => {
-          initParticles();
-          if (particleRafId !== null) cancelAnimationFrame(particleRafId);
-          particleRafId = requestAnimationFrame(animateParticles);
-        };
-
-        setupAndAnimate();
-        window.addEventListener("resize", setupAndAnimate);
-
-        document.addEventListener("visibilitychange", () => {
-          if (document.hidden && particleRafId !== null) {
-            cancelAnimationFrame(particleRafId);
-            particleRafId = null;
-          } else if (!document.hidden && particleRafId === null) {
-            particleRafId = requestAnimationFrame(animateParticles);
-          }
-        });
-      }
+      });
 
       const goToDashboard = () => {
         if (navigating) return;
@@ -201,7 +102,6 @@
       };
 
       startEntryBtn.addEventListener("click", goToDashboard);
-
       startEntryBtn.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();

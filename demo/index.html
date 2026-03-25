@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dashboard-page">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -78,6 +78,8 @@
   </style>
 </head>
 <body class="dashboard-mode">
+  <div id="bg-canvas" class="bg-canvas-layer" aria-hidden="true"></div>
+
   <header class="top-bar">
     <div class="top-title-wrap">
       <model-viewer
@@ -105,7 +107,10 @@
         <div class="module-head">
           <h2>Timer Control</h2>
         </div>
-        <p id="timer" class="timer">00:00.00</p>
+        <div id="timerDisplayFrame" class="timer-display-rect is-paused" aria-live="polite">
+          <canvas id="timerFxCanvas" class="timer-fx-canvas" aria-hidden="true"></canvas>
+          <p id="timer" class="timer">00:00.00</p>
+        </div>
         <div class="timer-actions">
           <button id="startBtn" class="btn btn-accent" type="button">Start</button>
           <button id="stopBtn" class="btn" type="button">Stop</button>
@@ -149,33 +154,63 @@
     </section>
   </main>
 
-  <section class="scoreboard-bottom panel-shell">
-    <div class="ops-bottom-stack">
-      <div class="table-panel panel-lite">
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Driver</th>
-              <th>Time</th>
-            </tr>
-          </thead>
-          <tbody id="scoreboardBody"></tbody>
-        </table>
+  <section class="scoreboard-bottom panel-shell race-results-shell">
+    <aside class="results-side-rail" aria-hidden="true">
+      <span class="results-side-main">RESULT</span>
+      <span class="results-side-sub">RACE</span>
+    </aside>
+
+    <div class="results-main">
+      <header class="results-topline">
+        <div class="results-event">
+          <p class="results-season">2026 Live Session</p>
+          <h2>Race Ranking</h2>
+        </div>
+        <p class="results-brand">F9G Race Control</p>
+      </header>
+
+      <div class="results-podium" aria-live="polite">
+        <article class="podium-card podium-card--p2">
+          <span class="podium-rank">P2</span>
+          <p id="podiumP2Name" class="podium-name">No Driver</p>
+        </article>
+        <article class="podium-card podium-card--p1">
+          <span class="podium-rank">P1</span>
+          <p id="podiumP1Name" class="podium-name">No Driver</p>
+        </article>
+        <article class="podium-card podium-card--p3">
+          <span class="podium-rank">P3</span>
+          <p id="podiumP3Name" class="podium-name">No Driver</p>
+        </article>
       </div>
 
-      <div class="score-controls panel-lite">
-        <label for="playerNameInput">Add Player</label>
-        <div class="score-row">
-          <input id="playerNameInput" class="control-input" type="text" placeholder="Player name" />
-          <button id="addPlayerBtn" class="btn" type="button">Add</button>
+      <div class="results-grid">
+        <div class="score-controls panel-lite results-controls">
+          <label for="playerNameInput">Add Player</label>
+          <div class="score-row">
+            <input id="playerNameInput" class="control-input" type="text" placeholder="Player name" />
+            <button id="addPlayerBtn" class="btn" type="button">Add</button>
+          </div>
+          <label for="playerSelect">Save Time To</label>
+          <div class="score-row">
+            <select id="playerSelect" class="control-input"></select>
+            <button id="saveTimeBtn" class="btn btn-accent" type="button">Save Time</button>
+          </div>
+          <p id="scoreStatus" class="setup-note">Add a player to start recording scores.</p>
         </div>
-        <label for="playerSelect">Save Time To</label>
-        <div class="score-row">
-          <select id="playerSelect" class="control-input"></select>
-          <button id="saveTimeBtn" class="btn btn-accent" type="button">Save Time</button>
+
+        <div class="table-panel panel-lite results-table-panel">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Driver</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="scoreboardBody"></tbody>
+          </table>
         </div>
-        <p id="scoreStatus" class="setup-note">Add a player to start recording scores.</p>
       </div>
     </div>
   </section>
