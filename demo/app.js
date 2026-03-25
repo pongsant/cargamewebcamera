@@ -258,6 +258,7 @@ const scoreStatus = document.getElementById("scoreStatus");
 const wsStatusEl = document.getElementById("wsStatus");
 const penaltyCountEl = document.getElementById("penaltyCount");
 const penaltyTimeEl = document.getElementById("penaltyTime");
+const finalScoreEl = document.getElementById("finalScore");
 const raceStatusEl = document.getElementById("raceStatus");
 const finalResultBox = document.getElementById("finalResultBox");
 const resultRawTimeEl = document.getElementById("resultRawTime");
@@ -587,10 +588,15 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
   const formatSeconds = (seconds) => `${Number(seconds || 0).toFixed(2)}s`;
 
+  const updateFinalScoreUi = (finalSeconds = 0) => {
+    if (finalScoreEl) finalScoreEl.textContent = formatSeconds(finalSeconds);
+  };
+
   const update = () => {
     const now = performance.now();
     const elapsed = elapsedBefore + (now - startTime);
     timerEl.textContent = formatTime(elapsed);
+    updateFinalScoreUi((elapsed / 1000) + latestPenaltyTime);
     timerRafId = requestAnimationFrame(update);
   };
 
@@ -647,6 +653,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     latestPenaltyTime = penaltyTime;
     if (penaltyCountEl) penaltyCountEl.textContent = String(penaltyCount);
     if (penaltyTimeEl) penaltyTimeEl.textContent = formatSeconds(penaltyTime);
+    updateFinalScoreUi((getCurrentElapsed() / 1000) + latestPenaltyTime);
   };
 
   const hideFinalResult = () => {
@@ -655,6 +662,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     if (resultRawTimeEl) resultRawTimeEl.textContent = "--";
     if (resultPenaltySummaryEl) resultPenaltySummaryEl.textContent = "--";
     if (resultFinalTimeEl) resultFinalTimeEl.textContent = "--";
+    updateFinalScoreUi(0);
   };
 
   const renderFinalResult = (payload) => {
@@ -664,6 +672,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
       resultPenaltySummaryEl.textContent = `${payload.penaltyCount} × ${Number(payload.penaltySeconds || 0).toFixed(2)}s = ${formatSeconds(payload.penaltyTime)}`;
     }
     if (resultFinalTimeEl) resultFinalTimeEl.textContent = formatSeconds(payload.finalTime);
+    updateFinalScoreUi(payload.finalTime);
     finalResultBox?.classList.remove("is-hidden");
   };
 

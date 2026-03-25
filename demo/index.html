@@ -89,6 +89,10 @@
       gap: 0.2rem;
     }
 
+    .penalty-item--wide {
+      grid-column: 1 / -1;
+    }
+
     .penalty-label {
       font-size: clamp(0.68rem, 0.58vw, 0.8rem);
       font-weight: 700;
@@ -185,6 +189,10 @@
             <div class="penalty-item">
               <span class="penalty-label">Time</span>
               <span id="penaltyTime" class="penalty-value">00:00.00</span>
+            </div>
+            <div class="penalty-item penalty-item--wide">
+              <span class="penalty-label">Final Score</span>
+              <span id="finalScore" class="penalty-value">0.00s</span>
             </div>
           </div>
         </section>

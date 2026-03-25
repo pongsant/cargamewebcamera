@@ -16,7 +16,7 @@ PORT = 8765
 PREFERRED_CAMERA_LABEL = "Prum iPhone 17 Pro"
 PREFERRED_CAMERA_INDEX = 1
 CAMERA_FALLBACK_INDICES = (PREFERRED_CAMERA_INDEX, 0, 2)
-PENALTY_SECONDS = 1.0
+PENALTY_SECONDS = 5.0
 FRAME_QUEUE_MAX = 4
 FRAME_IDLE_SLEEP = 0.01
 WEBSOCKET_MAX_SIZE = 8_000_000
@@ -25,9 +25,8 @@ INTRO_VIDEO_FILENAME = "Race_Track_done.MP4"
 INTRO_VIDEO_MAX_SECONDS = 10.0
 FIELD_BACKGROUND_FILENAME = "f1_car_field.png"
 DISPLAY_WINDOW_NAME = "Race Track Game"
-HUD_PANEL_HEIGHT = 170
+HUD_PANEL_HEIGHT = 205
 FINISH_COLOR = (255, 0, 0)  # blue in OpenCV BGR
-MARKER_DOT_RADIUS = 10
 
 command_queue = queue.Queue()
 frame_queue = queue.Queue(maxsize=FRAME_QUEUE_MAX)
@@ -204,6 +203,21 @@ def point_has_passed_line(point, line_point, direction_vec):
     return np.dot(p - lp, direction_vec) >= 0
 
 
+def point_to_segment_distance(point, seg_a, seg_b):
+    p = np.array(point, dtype=np.float32)
+    a = np.array(seg_a, dtype=np.float32)
+    b = np.array(seg_b, dtype=np.float32)
+    ab = b - a
+    ab_len_sq = float(np.dot(ab, ab))
+    if ab_len_sq <= 1e-6:
+        return float(np.linalg.norm(p - a))
+
+    t = float(np.dot(p - a, ab) / ab_len_sq)
+    t = max(0.0, min(1.0, t))
+    closest = a + t * ab
+    return float(np.linalg.norm(p - closest))
+
+
 def reset_game():
     return {
         "game_running": False,
@@ -353,61 +367,34 @@ upper = np.array([80, 255, 255])
 # traced points from guide image
 # ----------------------------
 guide_points = np.array([
-    [533, 540],
-    [623, 539],
-    [692, 536],
-    [730, 504],
-    [743, 469],
-    [750, 430],
-    [769, 404],
-    [802, 397],
-    [835, 404],
-    [846, 423],
-    [853, 450],
-    [853, 476],
-    [851, 513],
-    [849, 548],
-    [850, 581],
-    [846, 612],
-    [846, 649],
-    [858, 681],
-    [885, 693],
-    [922, 689],
-    [936, 667],
-    [943, 630],
-    [948, 599],
-    [951, 573],
-    [969, 558],
-    [1000, 557],
-    [1031, 559],
-    [1070, 554],
-    [1096, 529],
-    [1108, 502],
-    [1112, 472],
-    [1117, 447],
-    [1129, 421],
-    [1156, 411],
-    [1185, 414],
-    [1206, 422],
-    [1215, 446],
-    [1218, 476],
-    [1222, 512],
-    [1222, 547],
-    [1223, 590],
-    [1224, 684],
-    [1224, 783],
+    [592, 508],
+    [647, 510],
+    [692, 502],
+    [723, 482],
+    [735, 450],
+    [745, 409],
+    [761, 374],
+    [795, 362],
+    [829, 363],
+    [849, 391],
+    [851, 427],
+    [846, 607],
+    [868, 661],
+    [915, 666],
+    [947, 629],
+    [956, 573],
+    [972, 533],
+    [1009, 525],
+    [1052, 526],
+    [1105, 510],
+    [1131, 433],
+    [1146, 390],
+    [1166, 373],
+    [1210, 372],
+    [1243, 409],
+    [1247, 454],
+    [1240, 765],
 ], dtype=np.float32)
-
-# Lane screen quad traced from the same reference as guide_points.
-# Provided order was: BR, TR, TL, BL. Reordered to TL, TR, BR, BL.
-LANE_SCREEN_QUAD = np.array([
-    [534, 284],    # top-left
-    [1371, 323],   # top-right
-    [1378, 800],   # bottom-right
-    [499, 767],    # bottom-left
-], dtype=np.float32)
-LANE_COORD_REF_W = 1378.0
-LANE_COORD_REF_H = 800.0
 
 print("Waiting for first frame from website (Chrome/iPhone) or local camera...")
 frame_packet = None
@@ -439,34 +426,11 @@ cam_h, cam_w = frame.shape[:2]
 intro_clip_cap = open_intro_clip()
 field_background = load_field_background(cam_w, cam_h)
 
-lane_ref_scale_x = cam_w / LANE_COORD_REF_W
-lane_ref_scale_y = cam_h / LANE_COORD_REF_H
-
-lane_screen_quad_scaled = LANE_SCREEN_QUAD.copy()
-lane_screen_quad_scaled[:, 0] *= lane_ref_scale_x
-lane_screen_quad_scaled[:, 1] *= lane_ref_scale_y
-
-guide_points_scaled = guide_points.copy()
-guide_points_scaled[:, 0] *= lane_ref_scale_x
-guide_points_scaled[:, 1] *= lane_ref_scale_y
-
-full_frame_quad = np.array([
-    [0, 0],
-    [cam_w - 1, 0],
-    [cam_w - 1, cam_h - 1],
-    [0, cam_h - 1],
-], dtype=np.float32)
-
-lane_to_full_matrix = cv2.getPerspectiveTransform(lane_screen_quad_scaled, full_frame_quad)
-track_points = cv2.perspectiveTransform(
-    guide_points_scaled.reshape(-1, 1, 2),
-    lane_to_full_matrix,
-).reshape(-1, 2)
+track_points = guide_points.astype(np.int32)
 track_points[:, 0] = np.clip(track_points[:, 0], 0, cam_w - 1)
 track_points[:, 1] = np.clip(track_points[:, 1], 0, cam_h - 1)
-track_points = track_points.astype(np.int32)
 
-road_thickness = max(30, int(min(cam_w, cam_h) * 0.15))
+road_thickness = max(16, int(min(cam_w, cam_h) * 0.05))
 
 lane_mask = np.zeros((cam_h, cam_w), dtype=np.uint8)
 cv2.polylines(
@@ -478,7 +442,7 @@ cv2.polylines(
     lineType=cv2.LINE_AA,
 )
 
-kernel = np.ones((7, 7), np.uint8)
+kernel = np.ones((5, 5), np.uint8)
 lane_mask = cv2.dilate(lane_mask, kernel, iterations=1)
 
 start_pt = track_points[0].astype(np.float32)
@@ -567,12 +531,6 @@ try:
 
         if detection_frame.shape[0] != cam_h or detection_frame.shape[1] != cam_w:
             detection_frame = cv2.resize(detection_frame, (cam_w, cam_h), interpolation=cv2.INTER_LINEAR)
-        detection_frame = cv2.warpPerspective(
-            detection_frame,
-            lane_to_full_matrix,
-            (cam_w, cam_h),
-            flags=cv2.INTER_LINEAR,
-        )
 
         frame = None
         if intro_video_active:
@@ -604,17 +562,6 @@ try:
         green_mask = cv2.inRange(hsv, lower, upper)
         contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        cv2.polylines(
-            frame,
-            [track_points],
-            False,
-            (255, 255, 255),
-            thickness=3,
-            lineType=cv2.LINE_AA,
-        )
-        cv2.line(frame, start_line_a, start_line_b, (0, 0, 255), 3)
-        cv2.line(frame, finish_line_a, finish_line_b, FINISH_COLOR, 3)
-
         cx, cy = None, None
         car_inside_lane = False
 
@@ -627,21 +574,9 @@ try:
                 biggest_area = area
 
         if biggest is not None:
-            cv2.drawContours(frame, [biggest], -1, (0, 255, 0), 2)
             x, y, w, h = cv2.boundingRect(biggest)
             cx = x + w // 2
             cy = y + h // 2
-
-            cv2.circle(frame, (cx, cy), MARKER_DOT_RADIUS, (0, 255, 0), -1)
-            cv2.putText(
-                frame,
-                f"({cx},{cy})",
-                (cx + 10, cy - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 255, 0),
-                1,
-            )
 
             car_inside_lane = point_is_inside_lane(cx, cy, lane_mask)
 
@@ -657,8 +592,13 @@ try:
             game["was_inside_lane"] = car_inside_lane
 
             current_before_finish = not point_has_passed_line((cx, cy), end_pt, finish_dir)
+            finish_line_distance = point_to_segment_distance((cx, cy), finish_line_a, finish_line_b)
+            finish_near_distance = max(14.0, road_thickness * 0.45)
+            touching_or_near_finish = finish_line_distance <= finish_near_distance
 
-            if game["game_running"] and game["was_before_finish"] and not current_before_finish:
+            if game["game_running"] and (
+                (game["was_before_finish"] and not current_before_finish) or touching_or_near_finish
+            ):
                 game["raw_time"] = time.time() - game["start_time"]
                 game["final_time"] = game["raw_time"] + game["outside_count"] * PENALTY_SECONDS
                 game["game_running"] = False
@@ -713,6 +653,8 @@ try:
                 (0, 165, 255),
                 2,
             )
+            running_final_score = display_time + game["outside_count"] * PENALTY_SECONDS
+            cv2.putText(frame, f"FINAL SCORE: {running_final_score:.2f}s", (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.95, (0, 255, 255), 2)
         elif game["timer_finished"]:
             cv2.putText(frame, f"RAW TIME: {game['raw_time']:.2f}s", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 0), 2)
             cv2.putText(
@@ -724,15 +666,15 @@ try:
                 (0, 165, 255),
                 2,
             )
-            cv2.putText(frame, f"FINAL TIME: {game['final_time']:.2f}s", (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.95, (0, 255, 255), 2)
+            cv2.putText(frame, f"FINAL SCORE: {game['final_time']:.2f}s", (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.95, (0, 255, 255), 2)
         else:
             cv2.putText(frame, "TIME: 0.00s", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
             cv2.putText(frame, "PENALTY COUNT: 0 (+0.00s)", (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
-            cv2.putText(frame, "Press Start on the website", (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
+            cv2.putText(frame, "FINAL SCORE: 0.00s", (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.95, (0, 255, 255), 2)
+            cv2.putText(frame, "Press Start on the website", (20, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
         cv2.putText(frame, f"SOURCE ({source_transport}): {source_label}", (20, min(165, cam_h - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 220, 120), 2)
-        cv2.putText(frame, "START", (start_line_a[0] - 20, start_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-        cv2.putText(frame, "FINISH", (finish_line_a[0] - 30, finish_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, FINISH_COLOR, 2)
+        cv2.putText(frame, "FINISH", (max(20, cam_w - 150), 40), cv2.FONT_HERSHEY_SIMPLEX, 0.9, FINISH_COLOR, 2)
 
         cv2.imshow(DISPLAY_WINDOW_NAME, frame)
 
