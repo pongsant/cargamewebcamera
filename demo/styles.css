@@ -2803,30 +2803,10 @@ body.dashboard-mode {
   position: relative;
   isolation: isolate;
   overflow-x: hidden;
-  background: #fdf9f6 !important;
+  background: #ffffff !important;
 }
 
 body.dashboard-mode::before,
-body.dashboard-mode::after {
-  content: "";
-  position: fixed;
-  inset: -24vmax;
-  pointer-events: none;
-  z-index: 0;
-  display: block !important;
-  will-change: transform, opacity;
-}
-
-body.dashboard-mode::before {
-  background:
-    radial-gradient(circle at 28% 24%, rgba(229, 57, 53, 0.82) 0%, rgba(229, 57, 53, 0.46) 14%, rgba(229, 57, 53, 0.14) 30%, rgba(229, 57, 53, 0) 48%),
-    radial-gradient(circle at 72% 72%, rgba(229, 57, 53, 0.8) 0%, rgba(229, 57, 53, 0.44) 14%, rgba(229, 57, 53, 0.13) 30%, rgba(229, 57, 53, 0) 48%);
-  filter: blur(28px) saturate(110%);
-  opacity: 0.94;
-  transform: translate3d(0, 0, 0) scale(1);
-  animation: dashboardRedBlobDrift 20s ease-in-out infinite alternate;
-}
-
 body.dashboard-mode::after {
   content: none !important;
   display: none !important;
@@ -3036,4 +3016,1173 @@ body.dashboard-mode #stopCamsBtn:active {
       0 10px 24px rgba(229, 57, 53, 0.38);
     filter: saturate(114%);
   }
+}
+
+/* =========================
+   Grid Theory Layout
+   ========================= */
+
+body.dashboard-mode {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "top"
+    "main"
+    "board";
+  align-items: start;
+  gap: clamp(0.72rem, 1.05vw, 1.05rem);
+  padding: 0 clamp(0.7rem, 1.4vw, 1.3rem) clamp(0.9rem, 1.5vw, 1.3rem);
+  background-color: #ffffff !important;
+  background-image:
+    linear-gradient(rgba(33, 83, 193, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(33, 83, 193, 0.06) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+body.dashboard-mode .top-bar {
+  grid-area: top;
+  grid-column: 1 / -1;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+body.dashboard-mode .dashboard-layout {
+  grid-area: main;
+  width: min(1800px, calc(100% - clamp(1rem, 2.2vw, 2.6rem))) !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+body.dashboard-mode .scoreboard-bottom {
+  grid-area: board;
+  width: min(1800px, calc(100% - clamp(1rem, 2.2vw, 2.6rem))) !important;
+  margin: 0 auto !important;
+}
+
+body.dashboard-mode .camera-module,
+body.dashboard-mode .race-results-shell {
+  position: relative;
+  overflow: hidden !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(58, 78, 126, 0.05) 0,
+      rgba(58, 78, 126, 0.05) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(58, 78, 126, 0.04) 0,
+      rgba(58, 78, 126, 0.04) 1px,
+      transparent 1px,
+      transparent 10px
+    ),
+    rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.dashboard-mode .camera-module {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "head"
+    "timer"
+    "cameras"
+    "controls"
+    "status";
+  gap: clamp(0.62rem, 0.95vw, 0.92rem);
+}
+
+body.dashboard-mode .camera-module > .module-head {
+  grid-area: head;
+  margin: 0 !important;
+}
+
+body.dashboard-mode .camera-module > .camera-two-grid {
+  grid-area: cameras;
+}
+
+body.dashboard-mode .camera-module > .timer-control-top {
+  grid-area: timer;
+  width: 100%;
+  margin: 0 !important;
+}
+
+body.dashboard-mode .camera-module > .camera-setup-bottom {
+  grid-area: controls;
+  margin: 0 !important;
+}
+
+body.dashboard-mode .camera-module > .camera-status-row {
+  grid-area: status;
+  margin: 0 !important;
+}
+
+body.dashboard-mode .camera-module::before,
+body.dashboard-mode .race-results-shell::before {
+  content: "+";
+  position: absolute;
+  right: clamp(0.5rem, 1vw, 0.9rem);
+  top: clamp(0.45rem, 0.8vw, 0.7rem);
+  font-size: clamp(0.95rem, 1.3vw, 1.2rem);
+  font-weight: 400;
+  color: rgba(33, 83, 193, 0.55);
+  line-height: 1;
+  pointer-events: none;
+}
+
+body.dashboard-mode .camera-two-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(0.58rem, 0.85vw, 0.85rem) !important;
+  align-items: start !important;
+}
+
+body.dashboard-mode .camera-card--main video {
+  aspect-ratio: 16 / 8.2 !important;
+  min-height: clamp(360px, 56vh, 700px);
+}
+
+body.dashboard-mode .camera-two-grid .camera-card {
+  border-radius: 6px !important;
+  border: 1px solid rgba(0, 0, 0, 0.16) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  transform: none !important;
+  clip-path: none !important;
+}
+
+body.dashboard-mode .results-podium {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: clamp(0.5rem, 0.8vw, 0.8rem) !important;
+}
+
+body.dashboard-mode .results-podium .podium-card,
+body.dashboard-mode .results-podium .podium-card--p1 {
+  transform: none !important;
+  clip-path: none !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(229, 57, 53, 0.34) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: none !important;
+}
+
+body.dashboard-mode .results-grid {
+  grid-template-columns: minmax(210px, 0.88fr) minmax(0, 1.12fr) !important;
+  gap: clamp(0.58rem, 0.85vw, 0.9rem) !important;
+  align-items: stretch !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body.dashboard-mode .results-controls,
+body.dashboard-mode .results-table-panel {
+  height: auto !important;
+  min-height: clamp(248px, 30vh, 400px) !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  border-radius: 6px !important;
+  transform: none !important;
+  clip-path: none !important;
+  box-shadow: none !important;
+}
+
+body.dashboard-mode .results-controls {
+  border: 1px solid rgba(229, 57, 53, 0.34) !important;
+  background: rgba(255, 250, 250, 0.96) !important;
+}
+
+body.dashboard-mode .results-table-panel {
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+}
+
+body.dashboard-mode .results-table tbody {
+  max-height: min(42vh, 420px) !important;
+}
+
+body.dashboard-mode .race-results-shell,
+body.dashboard-mode .race-results-shell * {
+  transition: none !important;
+}
+
+@media (max-width: 1240px) {
+  body.dashboard-mode {
+    background-size: 22px 22px;
+  }
+
+  body.dashboard-mode .dashboard-layout,
+  body.dashboard-mode .scoreboard-bottom {
+    width: min(1800px, calc(100% - clamp(1rem, 2.2vw, 2.6rem))) !important;
+    margin: 0 auto !important;
+  }
+}
+
+@media (max-width: 980px) {
+  body.dashboard-mode .camera-two-grid,
+  body.dashboard-mode .results-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================
+   Layout V2 (Beacon-inspired)
+   ========================= */
+
+body.dashboard-mode {
+  grid-template-columns: 1fr !important;
+  grid-template-areas:
+    "top"
+    "main"
+    "board" !important;
+  gap: clamp(0.75rem, 1.1vw, 1.1rem) !important;
+  padding: 0 clamp(0.75rem, 1.35vw, 1.2rem) clamp(0.95rem, 1.5vw, 1.25rem) !important;
+  background: #d9dce1 !important;
+  background-image: none !important;
+}
+
+body.dashboard-mode .top-bar {
+  background: #f6f6f7 !important;
+  border: 1px solid rgba(0, 0, 0, 0.14) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
+  border-radius: 2px !important;
+  min-height: clamp(74px, 8vw, 92px);
+  color: #111111 !important;
+  box-shadow: none !important;
+}
+
+body.dashboard-mode .top-bar,
+body.dashboard-mode .top-bar .live-state,
+body.dashboard-mode .top-bar #exitBtn {
+  color: #111111 !important;
+}
+
+body.dashboard-mode .top-bar .live-state,
+body.dashboard-mode .top-bar #exitBtn {
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+}
+
+body.dashboard-mode .dashboard-layout {
+  grid-area: main !important;
+  width: min(1800px, calc(100% - clamp(1rem, 2.2vw, 2.6rem))) !important;
+  margin: 0 auto !important;
+}
+
+body.dashboard-mode .scoreboard-bottom {
+  grid-area: board !important;
+  width: min(1800px, calc(100% - clamp(1rem, 2.2vw, 2.6rem))) !important;
+  margin: 0 auto !important;
+}
+
+body.dashboard-mode .camera-module,
+body.dashboard-mode .race-results-shell {
+  border-radius: 2px !important;
+  border: 1px solid rgba(0, 0, 0, 0.16) !important;
+  background: #fdfdfd !important;
+  box-shadow: none !important;
+  padding: clamp(0.56rem, 0.92vw, 0.9rem) !important;
+}
+
+body.dashboard-mode .camera-module {
+  grid-template-areas:
+    "head"
+    "timer"
+    "cameras"
+    "controls"
+    "status" !important;
+  gap: clamp(0.52rem, 0.8vw, 0.82rem) !important;
+}
+
+body.dashboard-mode .camera-module::before,
+body.dashboard-mode .race-results-shell::before {
+  content: "+" !important;
+  color: rgba(46, 88, 190, 0.56) !important;
+  font-size: clamp(1rem, 1.2vw, 1.14rem) !important;
+}
+
+body.dashboard-mode .camera-two-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(0.58rem, 0.85vw, 0.9rem) !important;
+}
+
+body.dashboard-mode .camera-card--main video {
+  aspect-ratio: 16 / 8.3 !important;
+  min-height: clamp(380px, 58vh, 740px) !important;
+}
+
+body.dashboard-mode .results-side-rail {
+  display: none !important;
+}
+
+body.dashboard-mode .results-main {
+  gap: clamp(0.55rem, 0.85vw, 0.85rem) !important;
+}
+
+body.dashboard-mode .results-topline {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  padding: clamp(0.42rem, 0.7vw, 0.64rem);
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(54, 77, 129, 0.05) 0,
+      rgba(54, 77, 129, 0.05) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    #fbfbfc;
+}
+
+body.dashboard-mode .results-podium {
+  gap: clamp(0.45rem, 0.72vw, 0.72rem) !important;
+}
+
+body.dashboard-mode .results-podium .podium-card,
+body.dashboard-mode .results-podium .podium-card--p1 {
+  border: 1px solid rgba(0, 0, 0, 0.16) !important;
+  border-radius: 2px !important;
+  background: #fcfcfc !important;
+}
+
+body.dashboard-mode .results-grid {
+  grid-template-columns: 1fr !important;
+  gap: clamp(0.5rem, 0.74vw, 0.72rem) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body.dashboard-mode .camera-module > .module-head,
+body.dashboard-mode .results-topline {
+  position: relative;
+  padding-bottom: clamp(0.36rem, 0.6vw, 0.52rem);
+}
+
+body.dashboard-mode .camera-module > .module-head::after,
+body.dashboard-mode .results-topline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  border-top: 1px solid rgba(0, 0, 0, 0.16);
+}
+
+body.dashboard-mode .results-controls,
+body.dashboard-mode .results-table-panel {
+  min-height: 0 !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+body.dashboard-mode .results-controls {
+  border: 1px solid rgba(229, 57, 53, 0.28) !important;
+  background: #fffafa !important;
+}
+
+body.dashboard-mode .results-table-panel {
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+  background: #fdfdfd !important;
+}
+
+body.dashboard-mode .results-table tbody {
+  max-height: min(36vh, 340px) !important;
+}
+
+@media (max-width: 1260px) {
+  body.dashboard-mode {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "top"
+      "main"
+      "board" !important;
+  }
+
+  body.dashboard-mode .dashboard-layout,
+  body.dashboard-mode .scoreboard-bottom {
+    width: min(1800px, calc(100% - clamp(1rem, 2.2vw, 2.6rem))) !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* =========================
+   Restore Previous Look
+   ========================= */
+
+body.dashboard-mode {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #111111 !important;
+}
+
+body.dashboard-mode::before,
+body.dashboard-mode::after,
+body.dashboard-mode #bg-canvas.bg-canvas-layer {
+  content: none !important;
+  display: none !important;
+}
+
+body.dashboard-mode .top-bar,
+body.dashboard-mode .camera-module,
+body.dashboard-mode .race-results-shell,
+body.dashboard-mode .panel-shell,
+body.dashboard-mode .panel-lite,
+body.dashboard-mode .results-controls,
+body.dashboard-mode .results-table-panel,
+body.dashboard-mode .timer-display-rect {
+  background: #ffffff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(0, 0, 0, 0.16) !important;
+}
+
+body.dashboard-mode .camera-module::before,
+body.dashboard-mode .race-results-shell::before,
+body.dashboard-mode .panel-shell::before,
+body.dashboard-mode .panel-lite::before {
+  content: none !important;
+}
+
+body.dashboard-mode .module-head h2,
+body.dashboard-mode .results-event h2,
+body.dashboard-mode .results-side-main,
+body.dashboard-mode .results-side-sub {
+  color: #e53935 !important;
+}
+
+body.dashboard-mode .results-season,
+body.dashboard-mode .results-brand,
+body.dashboard-mode .camera-head h3,
+body.dashboard-mode th,
+body.dashboard-mode td,
+body.dashboard-mode .setup-note,
+body.dashboard-mode .score-controls label {
+  color: #111111 !important;
+}
+
+body.dashboard-mode .btn,
+body.dashboard-mode .control-input {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+}
+
+body.dashboard-mode .btn-accent,
+body.dashboard-mode #startBtn.btn-accent,
+body.dashboard-mode #stopBtn.btn-accent,
+body.dashboard-mode #enableCamsBtn.btn-accent,
+body.dashboard-mode #stopCamsBtn.btn-accent {
+  background: #e53935 !important;
+  color: #ffffff !important;
+  border-color: #e53935 !important;
+}
+
+body.dashboard-mode .results-controls {
+  border-color: rgba(229, 57, 53, 0.36) !important;
+  background: #ffffff !important;
+}
+
+body.dashboard-mode .results-controls .score-row::after {
+  border-top-color: rgba(229, 57, 53, 0.34) !important;
+}
+
+/* =========================
+   Race Ranking Poster Layout
+   ========================= */
+
+body.dashboard-mode {
+  background: #e9e9ea !important;
+}
+
+body.dashboard-mode .scoreboard-bottom.race-results-shell {
+  width: min(1880px, calc(100% - clamp(1rem, 2vw, 2.4rem))) !important;
+  margin: 0 auto clamp(1rem, 1.8vw, 1.8rem) !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: grid !important;
+  grid-template-columns: clamp(90px, 8vw, 165px) minmax(0, 1fr) !important;
+  gap: clamp(0.65rem, 0.95vw, 1rem) !important;
+  align-items: stretch !important;
+}
+
+body.dashboard-mode .results-side-rail {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  writing-mode: vertical-rl !important;
+  transform: rotate(180deg) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.03em !important;
+}
+
+body.dashboard-mode .results-side-main,
+body.dashboard-mode .results-side-sub {
+  color: #e53935 !important;
+  line-height: 0.85 !important;
+}
+
+body.dashboard-mode .results-side-main {
+  font-size: clamp(2.9rem, 5.1vw, 6.4rem) !important;
+}
+
+body.dashboard-mode .results-side-sub {
+  font-size: clamp(1.2rem, 2vw, 2.5rem) !important;
+}
+
+body.dashboard-mode .results-main {
+  display: grid !important;
+  gap: clamp(0.65rem, 0.95vw, 1.1rem) !important;
+}
+
+body.dashboard-mode .results-topline {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+body.dashboard-mode .results-topline::after {
+  content: none !important;
+}
+
+body.dashboard-mode .results-season {
+  color: #111111 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.09em !important;
+  text-transform: uppercase !important;
+  font-size: clamp(0.92rem, 1vw, 1.35rem) !important;
+}
+
+body.dashboard-mode .results-event h2 {
+  margin-top: 0.1rem !important;
+  color: #e53935 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
+  font-size: clamp(1.8rem, 3.2vw, 4rem) !important;
+}
+
+body.dashboard-mode .results-brand {
+  margin-top: 0.12rem !important;
+  color: #111111 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  font-size: clamp(0.9rem, 0.95vw, 1.4rem) !important;
+}
+
+body.dashboard-mode .results-podium {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: clamp(0.45rem, 0.78vw, 0.85rem) !important;
+}
+
+body.dashboard-mode .results-podium .podium-card,
+body.dashboard-mode .results-podium .podium-card--p1 {
+  position: relative !important;
+  min-height: clamp(120px, 10.8vw, 220px) !important;
+  border: 2px solid #111111 !important;
+  border-radius: 20px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  padding: clamp(0.7rem, 1.1vw, 1.2rem) !important;
+}
+
+body.dashboard-mode .results-podium .podium-rank {
+  position: absolute !important;
+  top: clamp(0.36rem, 0.65vw, 0.66rem) !important;
+  right: clamp(0.56rem, 0.9vw, 0.95rem) !important;
+  color: #000000 !important;
+  font-size: clamp(2.1rem, 3.2vw, 3.8rem) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.02em !important;
+}
+
+body.dashboard-mode .results-podium .podium-name {
+  position: absolute !important;
+  left: clamp(0.7rem, 1.1vw, 1.2rem) !important;
+  bottom: clamp(0.6rem, 1vw, 1rem) !important;
+  color: #000000 !important;
+  font-size: clamp(1.05rem, 1.26vw, 1.95rem) !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.01em !important;
+}
+
+body.dashboard-mode .results-grid {
+  display: grid !important;
+  grid-template-columns: minmax(300px, 0.4fr) minmax(0, 0.6fr) !important;
+  gap: clamp(0.7rem, 0.95vw, 1rem) !important;
+}
+
+body.dashboard-mode .results-controls {
+  border: none !important;
+  background: transparent !important;
+  padding: clamp(0.25rem, 0.5vw, 0.45rem) clamp(0.2rem, 0.4vw, 0.35rem) !important;
+  display: grid !important;
+  gap: clamp(0.52rem, 0.72vw, 0.78rem) !important;
+}
+
+body.dashboard-mode .results-controls label {
+  margin: 0 !important;
+  color: #111111 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: clamp(1rem, 1.1vw, 1.35rem) !important;
+  font-weight: 700 !important;
+}
+
+body.dashboard-mode .results-controls .score-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: clamp(0.38rem, 0.6vw, 0.6rem) !important;
+  padding-bottom: clamp(0.7rem, 1vw, 1rem) !important;
+  margin-bottom: clamp(0.15rem, 0.32vw, 0.25rem) !important;
+  align-items: start !important;
+}
+
+body.dashboard-mode .results-controls .score-row::after {
+  content: "" !important;
+  display: block !important;
+  width: 100% !important;
+  border-top: 2px solid rgba(229, 57, 53, 0.62) !important;
+  margin-top: clamp(0.3rem, 0.5vw, 0.5rem) !important;
+}
+
+body.dashboard-mode .results-controls .score-row .control-input {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: clamp(0.28rem, 0.5vw, 0.45rem) 0 !important;
+  color: #111111 !important;
+  font-size: clamp(1.1rem, 1.22vw, 1.82rem) !important;
+  font-weight: 500 !important;
+}
+
+body.dashboard-mode .results-controls .score-row .control-input::placeholder {
+  color: #7d7d7d !important;
+}
+
+body.dashboard-mode .results-controls .score-row .btn,
+body.dashboard-mode .results-controls .score-row .btn-accent {
+  justify-self: start !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #111111 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 500 !important;
+  font-size: clamp(1rem, 1.05vw, 1.45rem) !important;
+}
+
+body.dashboard-mode #scoreStatus {
+  margin-top: 0.2rem !important;
+  font-size: clamp(1.06rem, 1.2vw, 1.7rem) !important;
+  font-weight: 700 !important;
+  color: #111111 !important;
+}
+
+body.dashboard-mode .results-table-panel {
+  border: 2px solid #111111 !important;
+  border-radius: 20px !important;
+  background: transparent !important;
+  padding: clamp(0.7rem, 1vw, 1.05rem) !important;
+  display: grid !important;
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+}
+
+body.dashboard-mode .results-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+
+body.dashboard-mode .results-table thead,
+body.dashboard-mode .results-table tbody {
+  display: table-row-group !important;
+  max-height: none !important;
+}
+
+body.dashboard-mode .results-table thead th {
+  border: none !important;
+  color: #111111 !important;
+  font-size: clamp(1.06rem, 1.1vw, 1.45rem) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  padding: 0 clamp(0.35rem, 0.7vw, 0.7rem) clamp(0.62rem, 0.85vw, 0.95rem) !important;
+}
+
+body.dashboard-mode .results-table td {
+  border: none !important;
+  color: #111111 !important;
+  background: transparent !important;
+  padding: clamp(0.32rem, 0.6vw, 0.62rem) clamp(0.35rem, 0.7vw, 0.7rem) !important;
+}
+
+body.dashboard-mode .results-table .rank-cell {
+  width: clamp(64px, 7vw, 120px) !important;
+}
+
+body.dashboard-mode .results-table .rank-badge {
+  border: none !important;
+  background: transparent !important;
+  color: #000000 !important;
+  font-size: clamp(1.35rem, 2vw, 2.6rem) !important;
+  font-weight: 900 !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+}
+
+body.dashboard-mode .results-table .driver-cell {
+  color: #000000 !important;
+  font-size: clamp(1.9rem, 2.3vw, 3.1rem) !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+body.dashboard-mode .results-table .time-cell {
+  color: #000000 !important;
+  font-size: clamp(1.3rem, 1.9vw, 2.4rem) !important;
+  font-weight: 800 !important;
+  text-align: right !important;
+  letter-spacing: 0.02em !important;
+}
+
+body.dashboard-mode .results-more-row {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  margin-top: clamp(0.5rem, 0.8vw, 0.8rem) !important;
+}
+
+body.dashboard-mode .results-more-btn {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #111111 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  padding: 0 !important;
+  font-size: clamp(1rem, 1.05vw, 1.35rem) !important;
+  font-weight: 500 !important;
+}
+
+@media (max-width: 1180px) {
+  body.dashboard-mode .scoreboard-bottom.race-results-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.dashboard-mode .results-side-rail {
+    display: none !important;
+  }
+
+  body.dashboard-mode .results-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================
+   Final UI Override (White + Black Top Bar + Sticky Exit)
+   ========================= */
+
+html.dashboard-page,
+body.dashboard-mode {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+body.dashboard-mode::before,
+body.dashboard-mode::after,
+body.dashboard-mode #bg-canvas.bg-canvas-layer {
+  content: none !important;
+  display: none !important;
+}
+
+body.dashboard-mode .top-bar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 120 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: clamp(0.72rem, 1.2vw, 1.06rem) clamp(0.9rem, 2vw, 2rem) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+body.dashboard-mode.dashboard-scrolled .top-bar,
+body.dashboard-mode.dashboard-scroll-down .top-bar {
+  transform: none !important;
+  background: #000000 !important;
+  padding: clamp(0.72rem, 1.2vw, 1.06rem) clamp(0.9rem, 2vw, 2rem) !important;
+  box-shadow: none !important;
+}
+
+body.dashboard-mode .top-bar::before {
+  display: none !important;
+}
+
+body.dashboard-mode .top-bar,
+body.dashboard-mode .top-bar .live-state,
+body.dashboard-mode .top-bar #exitBtn {
+  color: #ffffff !important;
+}
+
+body.dashboard-mode .top-bar .live-state {
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  background: transparent !important;
+}
+
+body.dashboard-mode .top-bar .live-state::before {
+  background: #ffffff !important;
+}
+
+/* Keep Exit visible while scrolling */
+body.dashboard-mode .top-bar #exitBtn {
+  position: fixed !important;
+  top: clamp(0.52rem, 1vw, 0.8rem) !important;
+  right: clamp(0.7rem, 1.6vw, 1.3rem) !important;
+  z-index: 130 !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+@media (max-width: 780px) {
+  body.dashboard-mode .top-bar #exitBtn {
+    top: 0.56rem !important;
+    right: 0.68rem !important;
+  }
+}
+
+/* =========================
+   Responsive Proportional Scaling
+   ========================= */
+
+body.dashboard-mode {
+  font-size: clamp(14px, 0.28vw + 12px, 18px) !important;
+  line-height: 1.35 !important;
+  overflow-x: hidden !important;
+}
+
+body.dashboard-mode .dashboard-layout,
+body.dashboard-mode .scoreboard-bottom.race-results-shell {
+  width: min(1880px, calc(100% - clamp(0.9rem, 2.6vw, 2.8rem))) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+body.dashboard-mode .top-bar {
+  min-height: clamp(58px, 5.8vw, 88px) !important;
+  padding: clamp(0.5rem, 1.05vw, 1.02rem) clamp(0.8rem, 1.8vw, 1.9rem) !important;
+}
+
+body.dashboard-mode .top-logo-viewer {
+  width: clamp(150px, 17vw, 310px) !important;
+  height: clamp(56px, 6.5vw, 128px) !important;
+}
+
+body.dashboard-mode .top-bar .live-state,
+body.dashboard-mode .top-bar #exitBtn {
+  font-size: clamp(0.78rem, 0.62vw, 1.02rem) !important;
+  padding: clamp(0.36rem, 0.55vw, 0.62rem) clamp(0.62rem, 0.9vw, 0.96rem) !important;
+}
+
+body.dashboard-mode .camera-module {
+  padding: clamp(0.55rem, 0.95vw, 0.95rem) !important;
+  gap: clamp(0.5rem, 0.82vw, 0.9rem) !important;
+}
+
+body.dashboard-mode .camera-module .module-head h2 {
+  font-size: clamp(0.9rem, 0.9vw, 1.28rem) !important;
+}
+
+body.dashboard-mode .camera-card {
+  padding: clamp(0.5rem, 0.82vw, 0.9rem) !important;
+}
+
+body.dashboard-mode .camera-head h3 {
+  font-size: clamp(0.86rem, 0.88vw, 1.22rem) !important;
+}
+
+body.dashboard-mode .camera-head .control-input {
+  font-size: clamp(0.82rem, 0.74vw, 1.05rem) !important;
+}
+
+body.dashboard-mode .camera-card--main video {
+  aspect-ratio: 16 / 9 !important;
+  min-height: clamp(240px, 48vh, 740px) !important;
+}
+
+body.dashboard-mode .timer-bottom-panel {
+  padding: clamp(0.5rem, 0.82vw, 0.9rem) !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .module-head h2 {
+  font-size: clamp(0.88rem, 0.86vw, 1.2rem) !important;
+}
+
+body.dashboard-mode .timer-display-rect {
+  min-height: clamp(88px, 10vw, 170px) !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .timer-display-rect .timer,
+body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-running .timer,
+body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-paused .timer {
+  font-size: clamp(1.72rem, 4.3vw, 4rem) !important;
+}
+
+body.dashboard-mode .timer-actions .btn,
+body.dashboard-mode .camera-setup-bottom .setup-actions .btn {
+  font-size: clamp(0.8rem, 0.76vw, 1.04rem) !important;
+  padding: clamp(0.4rem, 0.62vw, 0.68rem) clamp(0.62rem, 0.92vw, 1.02rem) !important;
+}
+
+body.dashboard-mode .camera-status-row,
+body.dashboard-mode #scoreStatus {
+  font-size: clamp(0.92rem, 1.04vw, 1.62rem) !important;
+}
+
+body.dashboard-mode .results-main {
+  gap: clamp(0.55rem, 0.82vw, 0.96rem) !important;
+}
+
+body.dashboard-mode .results-season {
+  font-size: clamp(0.84rem, 0.84vw, 1.3rem) !important;
+}
+
+body.dashboard-mode .results-event h2 {
+  font-size: clamp(1.56rem, 3vw, 3.9rem) !important;
+}
+
+body.dashboard-mode .results-brand {
+  font-size: clamp(0.82rem, 0.82vw, 1.3rem) !important;
+}
+
+body.dashboard-mode .results-podium {
+  gap: clamp(0.42rem, 0.76vw, 0.86rem) !important;
+}
+
+body.dashboard-mode .results-podium .podium-card,
+body.dashboard-mode .results-podium .podium-card--p1 {
+  min-height: clamp(112px, 11.2vw, 220px) !important;
+  border-radius: clamp(12px, 1vw, 20px) !important;
+}
+
+body.dashboard-mode .results-podium .podium-rank {
+  font-size: clamp(1.72rem, 3.1vw, 3.8rem) !important;
+}
+
+body.dashboard-mode .results-podium .podium-name {
+  font-size: clamp(0.98rem, 1.24vw, 1.98rem) !important;
+}
+
+body.dashboard-mode .results-grid {
+  grid-template-columns: minmax(280px, 0.42fr) minmax(0, 0.58fr) !important;
+  gap: clamp(0.64rem, 0.94vw, 1.06rem) !important;
+}
+
+body.dashboard-mode .results-controls label {
+  font-size: clamp(0.94rem, 0.98vw, 1.35rem) !important;
+}
+
+body.dashboard-mode .results-controls .score-row .control-input {
+  font-size: clamp(1rem, 1.16vw, 1.82rem) !important;
+}
+
+body.dashboard-mode .results-controls .score-row .btn,
+body.dashboard-mode .results-controls .score-row .btn-accent {
+  font-size: clamp(0.94rem, 0.96vw, 1.35rem) !important;
+}
+
+body.dashboard-mode .results-table-panel {
+  border-radius: clamp(12px, 1vw, 20px) !important;
+  padding: clamp(0.62rem, 0.92vw, 1.02rem) !important;
+}
+
+body.dashboard-mode .results-table thead th {
+  font-size: clamp(0.9rem, 0.9vw, 1.34rem) !important;
+}
+
+body.dashboard-mode .results-table .rank-badge {
+  font-size: clamp(1.18rem, 1.86vw, 2.56rem) !important;
+}
+
+body.dashboard-mode .results-table .driver-cell {
+  font-size: clamp(1.18rem, 2.02vw, 3.1rem) !important;
+}
+
+body.dashboard-mode .results-table .time-cell {
+  font-size: clamp(1.02rem, 1.52vw, 2.4rem) !important;
+}
+
+body.dashboard-mode .results-more-btn {
+  font-size: clamp(0.92rem, 0.92vw, 1.26rem) !important;
+}
+
+@media (max-width: 1280px) {
+  body.dashboard-mode .results-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.dashboard-mode .results-table-panel {
+    min-height: clamp(280px, 38vh, 460px) !important;
+  }
+
+  body.dashboard-mode .results-controls {
+    min-height: 0 !important;
+  }
+}
+
+@media (max-width: 980px) {
+  body.dashboard-mode .top-logo-viewer {
+    width: clamp(132px, 28vw, 210px) !important;
+    height: clamp(48px, 11vw, 80px) !important;
+  }
+
+  body.dashboard-mode .scoreboard-bottom.race-results-shell {
+    grid-template-columns: 1fr !important;
+    gap: clamp(0.45rem, 1.4vw, 0.82rem) !important;
+  }
+
+  body.dashboard-mode .results-side-rail {
+    display: none !important;
+  }
+
+  body.dashboard-mode .results-topline {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.28rem !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body.dashboard-mode .top-bar {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+
+  body.dashboard-mode .top-title-wrap {
+    position: static !important;
+    left: auto !important;
+    transform: none !important;
+    margin-right: auto !important;
+  }
+
+  body.dashboard-mode .top-status-wrap {
+    margin-left: auto !important;
+    gap: 0.4rem !important;
+  }
+
+  body.dashboard-mode .camera-card--main video {
+    min-height: clamp(206px, 40vh, 420px) !important;
+  }
+
+  body.dashboard-mode .results-podium {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 520px) {
+  body.dashboard-mode .dashboard-layout,
+  body.dashboard-mode .scoreboard-bottom.race-results-shell {
+    width: calc(100% - 0.84rem) !important;
+  }
+
+  body.dashboard-mode .results-table .driver-cell {
+    font-size: clamp(1rem, 5vw, 1.5rem) !important;
+  }
+
+  body.dashboard-mode .results-table .time-cell {
+    font-size: clamp(0.92rem, 4vw, 1.3rem) !important;
+  }
+
+  body.dashboard-mode .top-bar #exitBtn {
+    font-size: 0.8rem !important;
+    padding: 0.35rem 0.58rem !important;
+  }
+}
+
+/* =========================
+   Exit / Live Session Alignment Fix
+   ========================= */
+
+body.dashboard-mode .top-status-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: clamp(0.36rem, 0.72vw, 0.76rem) !important;
+  margin-left: auto !important;
+  padding-right: clamp(0.1rem, 0.35vw, 0.3rem) !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+body.dashboard-mode .top-bar .live-state {
+  margin-right: clamp(0.12rem, 0.32vw, 0.32rem) !important;
+  white-space: nowrap !important;
+  transform: translateY(0) !important;
+}
+
+body.dashboard-mode .top-bar #exitBtn {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  z-index: auto !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 760px) {
+  body.dashboard-mode .top-status-wrap {
+    margin-left: auto !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* Camera size + timer size tweak */
+body.dashboard-mode .camera-card--main video {
+  min-height: clamp(280px, 52vh, 700px) !important;
+  max-height: clamp(360px, 62vh, 780px) !important;
+}
+
+body.dashboard-mode .timer-display-rect {
+  min-height: clamp(48px, 5.8vw, 88px) !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .timer-display-rect .timer,
+body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-running .timer,
+body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-paused .timer {
+  font-size: clamp(0.96rem, 2.1vw, 1.85rem) !important;
+}
+
+body.dashboard-mode .timer-bottom-panel {
+  padding: clamp(0.26rem, 0.5vw, 0.5rem) !important;
 }

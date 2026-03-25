@@ -1042,10 +1042,11 @@ const cameraStatus = document.getElementById("cameraStatus");
 const programSelect = document.getElementById("programSelect");
 const mainVideo = document.getElementById("mainVideo");
 const frameStreamStatusEl = document.getElementById("frameStreamStatus");
+const frontPreviewVideo = document.getElementById("frontVideo") || mainVideo;
 
 const slots = {
   back: { select: document.getElementById("backSelect"), video: document.getElementById("backVideo"), stream: null },
-  front: { select: document.getElementById("frontSelect"), video: document.getElementById("frontVideo"), stream: null },
+  front: { select: document.getElementById("frontSelect"), video: frontPreviewVideo, stream: null },
   top: { select: document.getElementById("topSelect"), video: document.getElementById("topVideo"), stream: null },
 };
 
@@ -1640,7 +1641,6 @@ const enableCameras = async () => {
 
     const startResults = await Promise.allSettled([
       startSlot("front"),
-      startSlot("top"),
     ]);
 
     const successCount = startResults.filter((result) => result.status === "fulfilled").length;
@@ -1648,7 +1648,7 @@ const enableCameras = async () => {
 
     if (successCount > 0) {
       startFramePump();
-      updateStatus("Sources connected. Choose Prum iPhone 17 Pro or Screen / Window (FaceTime).");
+      updateStatus("Prum iPhone 17 Pro connected. Main screen is live.");
     } else if (screenShareSupported) {
       stopFramePump();
       updateStatus("No camera started yet. Choose Screen / Window (FaceTime) to show your FaceTime call.");

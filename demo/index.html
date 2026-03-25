@@ -25,18 +25,14 @@
   <style>
     .camera-two-grid {
       display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--space-1);
       align-items: start;
     }
 
     .camera-card--main video {
-      aspect-ratio: 16 / 9;
-    }
-
-    .camera-card--phone video {
-      aspect-ratio: 9 / 16;
-      max-height: clamp(260px, 52vw, 560px);
+      aspect-ratio: 16 / 8.2;
+      min-height: clamp(360px, 56vh, 680px);
     }
 
     .camera-hidden-controls {
@@ -83,13 +79,9 @@
     }
 
     @media (max-width: 980px) {
-      .camera-two-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .camera-card--phone video {
+      .camera-card--main video {
         aspect-ratio: 16 / 9;
-        max-height: none;
+        min-height: clamp(240px, 44vh, 460px);
       }
     }
   </style>
@@ -136,18 +128,11 @@
       <div class="camera-two-grid">
         <article class="camera-card panel-lite camera-card--main">
           <div class="camera-head">
-            <h3>Main Camera</h3>
+            <h3>Prum iPhone 17 Pro</h3>
+            <select id="frontSelect" class="control-input"></select>
             <span class="live-pill">Live</span>
           </div>
           <video id="mainVideo" autoplay playsinline muted></video>
-        </article>
-
-        <article class="camera-card panel-lite camera-card--phone">
-          <div class="camera-head">
-            <h3>Prum iPhone 17 Pro</h3>
-            <select id="frontSelect" class="control-input"></select>
-          </div>
-          <video id="frontVideo" autoplay playsinline muted></video>
         </article>
 
         <div class="camera-hidden-controls" aria-hidden="true">
