@@ -51,68 +51,66 @@
         <h2>Camera View</h2>
       </div>
 
-      <div class="camera-setup panel-lite">
+      <section class="panel-lite camera-timer-panel timer-control-top">
+        <div class="module-head">
+          <h2>Timer Control</h2>
+        </div>
+        <p id="timer" class="timer">00:00.00</p>
+        <div class="timer-actions timer-actions-vertical">
+          <button id="startBtn" class="btn btn-accent" type="button">Start</button>
+          <button id="stopBtn" class="btn" type="button">Stop</button>
+          <button id="resetBtn" class="btn" type="button">Reset</button>
+        </div>
+        <div class="briefing-inline">
+          <div class="module-head">
+            <h2>System Briefing</h2>
+          </div>
+          <p class="setup-note">
+            All cars launch simultaneously and race for fixed laps. Lowest total time wins.
+            Monitor all camera feeds and use timer controls to coordinate race operations.
+          </p>
+        </div>
+      </section>
+
+      <div class="camera-grid">
+        <article class="camera-card panel-lite camera-card--program">
+          <div class="camera-head">
+            <h3>Main Camera</h3>
+            <span class="live-pill">Live</span>
+          </div>
+          <video id="mainVideo" autoplay playsinline muted></video>
+          <div class="program-control">
+            <label for="programSelect">Program Source</label>
+            <select id="programSelect" class="control-input">
+              <option value="front">Front Camera</option>
+              <option value="top">Top Cam</option>
+            </select>
+          </div>
+        </article>
+
+        <article class="camera-card panel-lite camera-card--preview">
+          <div class="camera-head">
+            <h3>Front Camera Preview</h3>
+            <select id="frontSelect" class="control-input"></select>
+          </div>
+          <video id="frontVideo" autoplay playsinline muted></video>
+        </article>
+
+        <article class="camera-card panel-lite camera-card--preview">
+          <div class="camera-head">
+            <h3>Top Cam</h3>
+            <select id="topSelect" class="control-input"></select>
+          </div>
+          <video id="topVideo" autoplay playsinline muted></video>
+        </article>
+      </div>
+
+      <div class="camera-setup camera-setup-bottom panel-lite">
         <p id="cameraStatus" class="setup-note"></p>
         <div class="setup-actions">
           <button id="enableCamsBtn" class="btn btn-accent" type="button">Enable Cameras</button>
           <button id="stopCamsBtn" class="btn" type="button">Stop Cameras</button>
         </div>
-      </div>
-
-      <div class="camera-main-row">
-        <div class="camera-grid">
-          <article class="camera-card panel-lite camera-card--program">
-            <div class="camera-head">
-              <h3>Main Camera</h3>
-              <span class="live-pill">Live</span>
-            </div>
-            <video id="mainVideo" autoplay playsinline muted></video>
-            <div class="program-control">
-              <label for="programSelect">Program Source</label>
-              <select id="programSelect" class="control-input">
-                <option value="front">Front Camera</option>
-                <option value="top">Top Cam</option>
-              </select>
-            </div>
-          </article>
-
-          <article class="camera-card panel-lite camera-card--preview">
-            <div class="camera-head">
-              <h3>Front Camera Preview</h3>
-              <select id="frontSelect" class="control-input"></select>
-            </div>
-            <video id="frontVideo" autoplay playsinline muted></video>
-          </article>
-
-          <article class="camera-card panel-lite camera-card--preview">
-            <div class="camera-head">
-              <h3>Top Cam</h3>
-              <select id="topSelect" class="control-input"></select>
-            </div>
-            <video id="topVideo" autoplay playsinline muted></video>
-          </article>
-        </div>
-
-        <section class="panel-lite camera-timer-panel">
-          <div class="module-head">
-            <h2>Timer Control</h2>
-          </div>
-          <p id="timer" class="timer">00:00.00</p>
-          <div class="timer-actions timer-actions-vertical">
-            <button id="startBtn" class="btn btn-accent" type="button">Start</button>
-            <button id="stopBtn" class="btn" type="button">Stop</button>
-            <button id="resetBtn" class="btn" type="button">Reset</button>
-          </div>
-          <div class="briefing-inline">
-            <div class="module-head">
-              <h2>System Briefing</h2>
-            </div>
-            <p class="setup-note">
-              All cars launch simultaneously and race for fixed laps. Lowest total time wins.
-              Monitor all camera feeds and use timer controls to coordinate race operations.
-            </p>
-          </div>
-        </section>
       </div>
     </section>
   </main>

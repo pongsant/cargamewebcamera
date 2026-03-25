@@ -399,6 +399,10 @@ th,
   top: auto;
 }
 
+.timer-control-top {
+  margin-bottom: var(--space-2);
+}
+
 .camera-timer-panel .timer {
   font-size: clamp(1.2rem, 1.7vw, 1.8rem);
   margin-bottom: var(--space-1);
@@ -454,6 +458,11 @@ th,
   display: flex;
   gap: var(--space-1);
   flex-wrap: wrap;
+}
+
+.camera-setup-bottom {
+  margin-top: var(--space-2);
+  margin-bottom: 0;
 }
 
 table {

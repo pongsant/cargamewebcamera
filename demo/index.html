@@ -21,6 +21,7 @@
     })();
   </script>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
     .camera-two-grid {
       display: grid;
@@ -55,6 +56,15 @@
       padding: var(--space-1);
     }
 
+    .timer-control-top {
+      margin-bottom: var(--space-2);
+    }
+
+    .camera-setup-bottom {
+      margin-top: var(--space-2);
+      margin-bottom: 0;
+    }
+
     @media (max-width: 980px) {
       .camera-two-grid {
         grid-template-columns: 1fr;
@@ -70,7 +80,14 @@
 <body class="dashboard-mode">
   <header class="top-bar">
     <div class="top-title-wrap">
-      <h1 class="bar-title">Camera Interface</h1>
+      <model-viewer
+        class="top-logo-viewer"
+        src="../model/F9G_logo_racing_3d.glb"
+        alt="F9G Racing logo"
+        disable-pan
+        interaction-prompt="none"
+        style="--poster-color: transparent;"
+      ></model-viewer>
     </div>
     <div class="top-status-wrap">
       <p class="live-state">Live Session</p>
@@ -84,13 +101,17 @@
         <h2>Camera View</h2>
       </div>
 
-      <div class="camera-setup panel-lite">
-        <p id="cameraStatus" class="setup-note"></p>
-        <div class="setup-actions">
-          <button id="enableCamsBtn" class="btn btn-accent" type="button">Enable Cameras</button>
-          <button id="stopCamsBtn" class="btn" type="button">Stop Cameras</button>
+      <section class="panel-lite compact-panel timer-bottom-panel timer-control-top">
+        <div class="module-head">
+          <h2>Timer Control</h2>
         </div>
-      </div>
+        <p id="timer" class="timer">00:00.00</p>
+        <div class="timer-actions">
+          <button id="startBtn" class="btn btn-accent" type="button">Start</button>
+          <button id="stopBtn" class="btn" type="button">Stop</button>
+          <button id="resetBtn" class="btn" type="button">Reset</button>
+        </div>
+      </section>
 
       <div class="camera-two-grid">
         <article class="camera-card panel-lite camera-card--main">
@@ -116,24 +137,20 @@
         </div>
       </div>
 
+      <div class="camera-setup camera-setup-bottom panel-lite">
+        <p id="cameraStatus" class="setup-note"></p>
+        <div class="setup-actions">
+          <button id="enableCamsBtn" class="btn btn-accent" type="button">Enable Cameras</button>
+          <button id="stopCamsBtn" class="btn" type="button">Stop Cameras</button>
+        </div>
+      </div>
+
       <p id="frameStreamStatus" class="setup-note camera-status-row">Waiting…</p>
     </section>
   </main>
 
   <section class="scoreboard-bottom panel-shell">
     <div class="ops-bottom-stack">
-      <section class="panel-lite compact-panel timer-bottom-panel">
-        <div class="module-head">
-          <h2>Timer Control</h2>
-        </div>
-        <p id="timer" class="timer">00:00.00</p>
-        <div class="timer-actions">
-          <button id="startBtn" class="btn btn-accent" type="button">Start</button>
-          <button id="stopBtn" class="btn" type="button">Stop</button>
-          <button id="resetBtn" class="btn" type="button">Reset</button>
-        </div>
-      </section>
-
       <div class="table-panel panel-lite">
         <table>
           <thead>
