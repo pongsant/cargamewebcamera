@@ -26,6 +26,8 @@ INTRO_VIDEO_MAX_SECONDS = 10.0
 FIELD_BACKGROUND_FILENAME = "f1_car_field.png"
 DISPLAY_WINDOW_NAME = "Race Track Game"
 HUD_PANEL_HEIGHT = 170
+FINISH_COLOR = (255, 0, 0)  # blue in OpenCV BGR
+MARKER_DOT_RADIUS = 10
 
 command_queue = queue.Queue()
 frame_queue = queue.Queue(maxsize=FRAME_QUEUE_MAX)
@@ -351,19 +353,61 @@ upper = np.array([80, 255, 255])
 # traced points from guide image
 # ----------------------------
 guide_points = np.array([
-    [4, 176], [68, 177], [116, 176], [139, 168], [152, 153], [157, 136],
-    [159, 113], [162, 91], [174, 76], [196, 63], [212, 61], [231, 65],
-    [243, 79], [246, 96], [247, 123], [247, 149], [248, 177], [248, 206],
-    [248, 233], [250, 255], [259, 275], [273, 288], [291, 291], [308, 284],
-    [317, 268], [320, 247], [323, 226], [323, 207], [330, 192], [348, 183],
-    [367, 183], [388, 183], [408, 181], [425, 175], [438, 163], [448, 148],
-    [451, 129], [453, 110], [455, 92], [466, 78], [480, 69], [499, 66],
-    [515, 69], [525, 76], [534, 91], [536, 112], [537, 140], [537, 190],
-    [538, 266], [540, 355],
+    [533, 540],
+    [623, 539],
+    [692, 536],
+    [730, 504],
+    [743, 469],
+    [750, 430],
+    [769, 404],
+    [802, 397],
+    [835, 404],
+    [846, 423],
+    [853, 450],
+    [853, 476],
+    [851, 513],
+    [849, 548],
+    [850, 581],
+    [846, 612],
+    [846, 649],
+    [858, 681],
+    [885, 693],
+    [922, 689],
+    [936, 667],
+    [943, 630],
+    [948, 599],
+    [951, 573],
+    [969, 558],
+    [1000, 557],
+    [1031, 559],
+    [1070, 554],
+    [1096, 529],
+    [1108, 502],
+    [1112, 472],
+    [1117, 447],
+    [1129, 421],
+    [1156, 411],
+    [1185, 414],
+    [1206, 422],
+    [1215, 446],
+    [1218, 476],
+    [1222, 512],
+    [1222, 547],
+    [1223, 590],
+    [1224, 684],
+    [1224, 783],
 ], dtype=np.float32)
 
-GUIDE_W = 640
-GUIDE_H = 360
+# Lane screen quad traced from the same reference as guide_points.
+# Provided order was: BR, TR, TL, BL. Reordered to TL, TR, BR, BL.
+LANE_SCREEN_QUAD = np.array([
+    [534, 284],    # top-left
+    [1371, 323],   # top-right
+    [1378, 800],   # bottom-right
+    [499, 767],    # bottom-left
+], dtype=np.float32)
+LANE_COORD_REF_W = 1378.0
+LANE_COORD_REF_H = 800.0
 
 print("Waiting for first frame from website (Chrome/iPhone) or local camera...")
 frame_packet = None
@@ -395,12 +439,31 @@ cam_h, cam_w = frame.shape[:2]
 intro_clip_cap = open_intro_clip()
 field_background = load_field_background(cam_w, cam_h)
 
-scale_x = cam_w / GUIDE_W
-scale_y = cam_h / GUIDE_H
+lane_ref_scale_x = cam_w / LANE_COORD_REF_W
+lane_ref_scale_y = cam_h / LANE_COORD_REF_H
 
-track_points = guide_points.copy()
-track_points[:, 0] *= scale_x
-track_points[:, 1] *= scale_y
+lane_screen_quad_scaled = LANE_SCREEN_QUAD.copy()
+lane_screen_quad_scaled[:, 0] *= lane_ref_scale_x
+lane_screen_quad_scaled[:, 1] *= lane_ref_scale_y
+
+guide_points_scaled = guide_points.copy()
+guide_points_scaled[:, 0] *= lane_ref_scale_x
+guide_points_scaled[:, 1] *= lane_ref_scale_y
+
+full_frame_quad = np.array([
+    [0, 0],
+    [cam_w - 1, 0],
+    [cam_w - 1, cam_h - 1],
+    [0, cam_h - 1],
+], dtype=np.float32)
+
+lane_to_full_matrix = cv2.getPerspectiveTransform(lane_screen_quad_scaled, full_frame_quad)
+track_points = cv2.perspectiveTransform(
+    guide_points_scaled.reshape(-1, 1, 2),
+    lane_to_full_matrix,
+).reshape(-1, 2)
+track_points[:, 0] = np.clip(track_points[:, 0], 0, cam_w - 1)
+track_points[:, 1] = np.clip(track_points[:, 1], 0, cam_h - 1)
 track_points = track_points.astype(np.int32)
 
 road_thickness = max(30, int(min(cam_w, cam_h) * 0.15))
@@ -504,6 +567,12 @@ try:
 
         if detection_frame.shape[0] != cam_h or detection_frame.shape[1] != cam_w:
             detection_frame = cv2.resize(detection_frame, (cam_w, cam_h), interpolation=cv2.INTER_LINEAR)
+        detection_frame = cv2.warpPerspective(
+            detection_frame,
+            lane_to_full_matrix,
+            (cam_w, cam_h),
+            flags=cv2.INTER_LINEAR,
+        )
 
         frame = None
         if intro_video_active:
@@ -535,18 +604,16 @@ try:
         green_mask = cv2.inRange(hsv, lower, upper)
         contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        overlay = frame.copy()
         cv2.polylines(
-            overlay,
+            frame,
             [track_points],
             False,
             (255, 255, 255),
-            thickness=road_thickness,
+            thickness=3,
             lineType=cv2.LINE_AA,
         )
-        cv2.line(overlay, start_line_a, start_line_b, (0, 0, 255), 3)
-        cv2.line(overlay, finish_line_a, finish_line_b, (0, 255, 0), 3)
-        frame = cv2.addWeighted(overlay, 0.45, frame, 0.55, 0)
+        cv2.line(frame, start_line_a, start_line_b, (0, 0, 255), 3)
+        cv2.line(frame, finish_line_a, finish_line_b, FINISH_COLOR, 3)
 
         cx, cy = None, None
         car_inside_lane = False
@@ -565,7 +632,7 @@ try:
             cx = x + w // 2
             cy = y + h // 2
 
-            cv2.circle(frame, (cx, cy), 10, (0, 255, 0), -1)
+            cv2.circle(frame, (cx, cy), MARKER_DOT_RADIUS, (0, 255, 0), -1)
             cv2.putText(
                 frame,
                 f"({cx},{cy})",
@@ -665,7 +732,7 @@ try:
 
         cv2.putText(frame, f"SOURCE ({source_transport}): {source_label}", (20, min(165, cam_h - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 220, 120), 2)
         cv2.putText(frame, "START", (start_line_a[0] - 20, start_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-        cv2.putText(frame, "FINISH", (finish_line_a[0] - 30, finish_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.putText(frame, "FINISH", (finish_line_a[0] - 30, finish_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, FINISH_COLOR, 2)
 
         cv2.imshow(DISPLAY_WINDOW_NAME, frame)
 
