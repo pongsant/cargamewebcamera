@@ -1,16 +1,32 @@
 @font-face {
-  font-family: "ShapiroLightFly";
-  src: url("font/OGJ Type Design - Shapiro 5 Light Fly.otf") format("opentype");
+  font-family: "HelveticaNeueCustom";
+  src: url("helvetica-neue-5/HelveticaNeueRoman.otf") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "ShapiroFeatherText";
-  src: url("font/OGJ Type Design - Shapiro 35 Feather Text.otf") format("opentype");
+  font-family: "HelveticaNeueCustom";
+  src: url("helvetica-neue-5/HelveticaNeueMedium.otf") format("opentype");
   font-style: normal;
-  font-weight: 400;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "HelveticaNeueCustom";
+  src: url("helvetica-neue-5/HelveticaNeueBold.otf") format("opentype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "HelveticaNeueCustom";
+  src: url("helvetica-neue-5/HelveticaNeueBlack.otf") format("opentype");
+  font-style: normal;
+  font-weight: 900;
   font-display: swap;
 }
 
@@ -48,7 +64,7 @@ body {
   margin: 0;
   background: linear-gradient(180deg, #fff0f0 0%, #ee6a6a 50%, #ffecec 100%);
   color: var(--text);
-  font-family: "ShapiroLightFly", "Segoe UI", sans-serif;
+  font-family: "HelveticaNeueCustom", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 0.02em;
 }
 
@@ -67,7 +83,7 @@ h3,
 th,
 .live-state,
 .live-pill {
-  font-family: "ShapiroFeatherText", "Segoe UI", sans-serif;
+  font-family: "HelveticaNeueCustom", "Helvetica Neue", Arial, sans-serif;
 }
 
 #bg-canvas,
@@ -526,7 +542,7 @@ td {
   background: #ffffff;
   color: var(--text);
   padding: clamp(0.42rem, 0.6vw, 0.66rem) clamp(0.5rem, 0.7vw, 0.72rem);
-  font-family: "ShapiroLightFly", "Segoe UI", sans-serif;
+  font-family: "HelveticaNeueCustom", "Helvetica Neue", Arial, sans-serif;
   font-size: var(--text-sm);
   border-radius: calc(var(--radius-1) - 2px);
 }
