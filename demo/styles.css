@@ -2695,3 +2695,52 @@ body.dashboard-mode #scoreStatus {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Transparent bars for Add Player / Save Time rows */
+body.dashboard-mode .results-controls .score-row {
+  position: relative;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 0 clamp(0.24rem, 0.36vw, 0.4rem) 0;
+  margin-bottom: clamp(0.2rem, 0.32vw, 0.36rem);
+  gap: clamp(0.38rem, 0.6vw, 0.66rem);
+}
+
+body.dashboard-mode .results-controls .score-row::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 1px;
+  width: clamp(240px, 31vw, 430px);
+  background: rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+body.dashboard-mode .results-controls .score-row .control-input,
+body.dashboard-mode .results-controls .score-row .btn,
+body.dashboard-mode .results-controls .score-row .btn-accent {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body.dashboard-mode .results-controls .score-row .control-input {
+  color: #000000 !important;
+}
+
+body.dashboard-mode .results-controls .score-row .control-input::placeholder {
+  color: rgba(0, 0, 0, 0.46) !important;
+}
+
+body.dashboard-mode .results-controls .score-row .btn,
+body.dashboard-mode .results-controls .score-row .btn-accent {
+  border-left: 0 !important;
+  border-radius: 0 !important;
+  padding-inline: clamp(0.58rem, 0.88vw, 0.96rem) !important;
+}
+
+body.dashboard-mode .results-controls {
+  overflow: visible !important;
+}
