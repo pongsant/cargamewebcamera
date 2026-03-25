@@ -1685,8 +1685,8 @@ html.dashboard-page::before {
 }
 
 body.dashboard-mode {
-  background: #050507;
-  color: #f6f6f6;
+  background: #020502;
+  color: #edffd4;
 }
 
 body.dashboard-mode::before,
@@ -1718,9 +1718,11 @@ body.dashboard-mode .scoreboard-bottom {
 
 body.dashboard-mode .top-bar {
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(8, 8, 9, 0.9), rgba(20, 20, 20, 0.8));
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.56);
+  background: linear-gradient(135deg, rgba(2, 6, 2, 0.92), rgba(8, 13, 8, 0.84));
+  border: 1px solid rgba(188, 255, 0, 0.36);
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(188, 255, 0, 0.08) inset;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -1731,15 +1733,17 @@ body.dashboard-mode .top-bar::before {
 
 body.dashboard-mode .live-state,
 body.dashboard-mode .live-pill {
-  background: linear-gradient(132deg, rgba(255, 255, 255, 0.24), rgba(185, 185, 185, 0.18));
-  border-color: rgba(255, 255, 255, 0.52);
-  color: #fcfcfd;
+  background: linear-gradient(132deg, rgba(188, 255, 0, 0.2), rgba(103, 155, 16, 0.2));
+  border-color: rgba(188, 255, 0, 0.5);
+  color: #e7ffac;
 }
 
 body.dashboard-mode .panel-shell,
 body.dashboard-mode .panel-lite {
-  background: linear-gradient(140deg, rgba(8, 8, 10, 0.92), rgba(24, 24, 24, 0.78));
-  border-color: rgba(255, 255, 255, 0.26);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(188, 255, 0, 0.12), rgba(188, 255, 0, 0) 42%),
+    linear-gradient(145deg, rgba(4, 8, 4, 0.94), rgba(11, 18, 11, 0.82));
+  border-color: rgba(188, 255, 0, 0.26);
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -1756,44 +1760,63 @@ body.dashboard-mode .setup-note,
 body.dashboard-mode td,
 body.dashboard-mode th,
 body.dashboard-mode .score-controls label {
-  color: #f2f2f2;
+  color: #efffd6;
 }
 
 body.dashboard-mode .camera-card video {
-  background: #050505;
-  border-color: rgba(255, 255, 255, 0.34);
+  background: #040804;
+  border-color: rgba(188, 255, 0, 0.36);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.52),
-    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
-  filter: contrast(1.04) saturate(0.65) brightness(0.98);
+    0 0 0 1px rgba(188, 255, 0, 0.15) inset;
+  filter: contrast(1.06) saturate(0.9) brightness(0.96);
 }
 
 body.dashboard-mode .timer-display-rect {
-  border-color: rgba(255, 255, 255, 0.36);
+  border-color: rgba(188, 255, 0, 0.42);
   background:
-    radial-gradient(circle at 22% 50%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0)),
-    linear-gradient(145deg, rgba(8, 8, 8, 0.94), rgba(24, 24, 24, 0.82));
+    radial-gradient(circle at 22% 50%, rgba(188, 255, 0, 0.2), rgba(188, 255, 0, 0)),
+    linear-gradient(145deg, rgba(3, 7, 3, 0.95), rgba(14, 22, 9, 0.84));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 10px 24px rgba(0, 0, 0, 0.4);
+    inset 0 0 0 1px rgba(188, 255, 0, 0.12),
+    0 0 22px rgba(163, 255, 35, 0.08),
+    0 10px 24px rgba(0, 0, 0, 0.42);
+}
+
+body.dashboard-mode .timer-display-rect::before {
+  background: linear-gradient(135deg, rgba(188, 255, 0, 0.14), rgba(188, 255, 0, 0));
+}
+
+body.dashboard-mode .timer-display-rect::after {
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(188, 255, 0, 0.08) 0,
+    rgba(188, 255, 0, 0.08) 1px,
+    transparent 1px,
+    transparent 3px
+  );
 }
 
 body.dashboard-mode .timer-display-rect .timer {
-  color: #f7f7f7;
+  color: #d9ff7a;
   text-shadow:
-    0 0 12px rgba(255, 255, 255, 0.16),
-    0 0 2px rgba(255, 255, 255, 0.24);
+    0 0 12px rgba(188, 255, 0, 0.28),
+    0 0 2px rgba(188, 255, 0, 0.32);
 }
 
 body.dashboard-mode .timer-display-rect.is-running .timer {
-  color: #ffffff;
+  color: #e6ff95;
   text-shadow:
-    0 0 16px rgba(255, 255, 255, 0.22),
-    0 0 3px rgba(255, 255, 255, 0.3);
+    0 0 18px rgba(188, 255, 0, 0.34),
+    0 0 3px rgba(188, 255, 0, 0.4);
 }
 
 body.dashboard-mode .timer-display-rect.is-paused .timer {
-  color: rgba(242, 242, 242, 0.92);
+  color: rgba(208, 235, 146, 0.92);
+}
+
+body.dashboard-mode .timer-display-rect.is-idle .timer {
+  opacity: 0;
 }
 
 body.dashboard-mode .timer-display-rect.is-reset {
@@ -1818,35 +1841,35 @@ body.dashboard-mode .timer-display-rect.is-reset {
 }
 
 body.dashboard-mode .control-input {
-  background: rgba(9, 9, 9, 0.74);
-  border-color: rgba(255, 255, 255, 0.38);
-  color: #f2f2f2;
+  background: rgba(4, 9, 4, 0.76);
+  border-color: rgba(188, 255, 0, 0.36);
+  color: #e9ffc4;
 }
 
 body.dashboard-mode .control-input::placeholder {
-  color: rgba(236, 236, 236, 0.58);
+  color: rgba(192, 224, 124, 0.68);
 }
 
 body.dashboard-mode .btn {
-  background: linear-gradient(130deg, rgba(13, 13, 14, 0.9), rgba(36, 36, 38, 0.78));
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #f4f4f4;
+  background: linear-gradient(130deg, rgba(4, 7, 4, 0.9), rgba(17, 26, 14, 0.82));
+  border-color: rgba(188, 255, 0, 0.42);
+  color: #dcff95;
 }
 
 body.dashboard-mode .btn:hover {
-  background: linear-gradient(130deg, rgba(30, 30, 31, 0.94), rgba(52, 52, 54, 0.82));
-  border-color: rgba(255, 255, 255, 0.62);
+  background: linear-gradient(130deg, rgba(9, 14, 8, 0.94), rgba(28, 41, 18, 0.86));
+  border-color: rgba(200, 255, 84, 0.7);
 }
 
 body.dashboard-mode .btn-accent {
-  background: linear-gradient(132deg, rgba(245, 245, 245, 0.96), rgba(210, 210, 210, 0.9));
-  border-color: rgba(255, 255, 255, 0.8);
-  color: #101010;
+  background: linear-gradient(132deg, rgba(188, 255, 0, 0.98), rgba(151, 220, 16, 0.94));
+  border-color: rgba(226, 255, 162, 0.72);
+  color: #0b1103;
 }
 
 body.dashboard-mode .btn-accent:hover {
-  background: linear-gradient(132deg, rgba(255, 255, 255, 0.98), rgba(228, 228, 228, 0.92));
-  border-color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(132deg, rgba(206, 255, 72, 0.99), rgba(168, 236, 28, 0.96));
+  border-color: rgba(233, 255, 179, 0.86);
 }
 
 body.dashboard-mode .race-results-shell {
@@ -1857,10 +1880,10 @@ body.dashboard-mode .race-results-shell {
   gap: var(--space-2);
   padding: var(--space-2);
   background:
-    linear-gradient(158deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 36%),
-    linear-gradient(18deg, rgba(145, 145, 145, 0.12), rgba(145, 145, 145, 0) 40%),
-    linear-gradient(140deg, rgba(8, 8, 9, 0.95), rgba(17, 17, 18, 0.84));
-  border-color: rgba(255, 255, 255, 0.3);
+    linear-gradient(158deg, rgba(188, 255, 0, 0.11), rgba(188, 255, 0, 0) 36%),
+    linear-gradient(18deg, rgba(94, 145, 38, 0.18), rgba(94, 145, 38, 0) 40%),
+    linear-gradient(140deg, rgba(3, 7, 3, 0.96), rgba(12, 19, 10, 0.86));
+  border-color: rgba(188, 255, 0, 0.34);
 }
 
 body.dashboard-mode .results-side-rail {
@@ -1876,14 +1899,14 @@ body.dashboard-mode .results-side-rail {
 body.dashboard-mode .results-side-main {
   font-size: clamp(2rem, 4.6vw, 4.6rem);
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.96);
+  color: rgba(240, 255, 212, 0.96);
   line-height: 0.9;
 }
 
 body.dashboard-mode .results-side-sub {
   font-size: clamp(1.3rem, 2.2vw, 2.4rem);
   font-weight: 900;
-  color: rgba(221, 221, 221, 0.94);
+  color: rgba(188, 255, 0, 0.96);
 }
 
 body.dashboard-mode .results-main {
@@ -1903,7 +1926,7 @@ body.dashboard-mode .results-event h2 {
   font-size: clamp(1.2rem, 2.4vw, 2rem);
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #ffffff;
+  color: #f4ffd8;
 }
 
 body.dashboard-mode .results-season {
@@ -1911,7 +1934,7 @@ body.dashboard-mode .results-season {
   font-size: clamp(0.76rem, 0.9vw, 0.95rem);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(205, 205, 205, 0.92);
+  color: rgba(196, 255, 100, 0.9);
 }
 
 body.dashboard-mode .results-brand {
@@ -1920,7 +1943,7 @@ body.dashboard-mode .results-brand {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(233, 255, 182, 0.9);
 }
 
 body.dashboard-mode .results-podium {
@@ -1932,8 +1955,8 @@ body.dashboard-mode .results-podium {
 body.dashboard-mode .podium-card {
   min-height: clamp(96px, 11vw, 142px);
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  background: linear-gradient(140deg, rgba(251, 251, 251, 0.95), rgba(214, 214, 214, 0.88));
+  border: 1px solid rgba(188, 255, 0, 0.34);
+  background: linear-gradient(140deg, rgba(9, 13, 8, 0.96), rgba(20, 29, 14, 0.88));
   display: grid;
   align-content: space-between;
   padding: clamp(0.5rem, 0.8vw, 0.86rem);
@@ -1941,14 +1964,15 @@ body.dashboard-mode .podium-card {
 
 body.dashboard-mode .podium-card--p1 {
   transform: translateY(-8px);
-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.98), rgba(232, 232, 232, 0.94));
+  background: linear-gradient(140deg, rgba(21, 33, 12, 0.98), rgba(43, 62, 22, 0.92));
+  box-shadow: 0 0 22px rgba(177, 255, 31, 0.14);
 }
 
 body.dashboard-mode .podium-rank {
   justify-self: end;
   font-size: clamp(1.6rem, 3vw, 2.3rem);
   font-weight: 900;
-  color: #101010;
+  color: #bcff00;
   letter-spacing: 0.02em;
 }
 
@@ -1956,7 +1980,7 @@ body.dashboard-mode .podium-name {
   margin: 0;
   font-size: clamp(0.78rem, 1vw, 1rem);
   font-weight: 800;
-  color: #111111;
+  color: #f1ffd3;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -1973,11 +1997,11 @@ body.dashboard-mode .results-controls {
   gap: 0.52rem;
   min-height: 100%;
   background:
-    linear-gradient(135deg, rgba(9, 9, 10, 0.92), rgba(26, 26, 28, 0.8)),
+    linear-gradient(135deg, rgba(5, 9, 5, 0.93), rgba(19, 28, 14, 0.82)),
     repeating-linear-gradient(
       -45deg,
-      rgba(255, 255, 255, 0.035) 0,
-      rgba(255, 255, 255, 0.035) 4px,
+      rgba(188, 255, 0, 0.05) 0,
+      rgba(188, 255, 0, 0.05) 4px,
       transparent 4px,
       transparent 10px
     );
@@ -1985,7 +2009,7 @@ body.dashboard-mode .results-controls {
 
 body.dashboard-mode .results-table-panel {
   min-height: 100%;
-  background: linear-gradient(140deg, rgba(11, 11, 12, 0.92), rgba(20, 20, 22, 0.82));
+  background: linear-gradient(140deg, rgba(4, 8, 4, 0.93), rgba(16, 24, 12, 0.84));
 }
 
 body.dashboard-mode .results-table {
@@ -1994,8 +2018,8 @@ body.dashboard-mode .results-table {
 }
 
 body.dashboard-mode .results-table thead th {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.34);
-  color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(188, 255, 0, 0.36);
+  color: rgba(211, 255, 114, 0.92);
   padding: 0.48rem 0.4rem;
   font-size: clamp(0.72rem, 0.86vw, 0.9rem);
   text-transform: uppercase;
@@ -2003,7 +2027,7 @@ body.dashboard-mode .results-table thead th {
 }
 
 body.dashboard-mode .results-table tbody tr {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+  border-bottom: 1px solid rgba(188, 255, 0, 0.2);
 }
 
 body.dashboard-mode .results-table tbody tr:last-child {
@@ -2013,7 +2037,7 @@ body.dashboard-mode .results-table tbody tr:last-child {
 body.dashboard-mode .results-table td {
   border-bottom: 0;
   padding: 0.55rem 0.35rem;
-  color: #ffffff;
+  color: #ecffd2;
 }
 
 body.dashboard-mode .results-table .rank-cell {
@@ -2028,8 +2052,8 @@ body.dashboard-mode .results-table .rank-badge {
   border-radius: 8px;
   font-weight: 900;
   font-size: clamp(1rem, 1.2vw, 1.24rem);
-  color: #11131a;
-  background: rgba(255, 255, 255, 0.9);
+  color: #0b1103;
+  background: rgba(188, 255, 0, 0.9);
 }
 
 body.dashboard-mode .results-table .driver-cell {
@@ -2047,26 +2071,28 @@ body.dashboard-mode .results-table .time-cell {
 }
 
 body.dashboard-mode .results-row--first .rank-badge {
-  background: #ffffff;
-  color: #101010;
+  background: #bcff00;
+  color: #0b1103;
 }
 
 body.dashboard-mode .results-row--second .rank-badge {
-  background: #dedede;
+  background: #88ba22;
+  color: #0b1103;
 }
 
 body.dashboard-mode .results-row--third .rank-badge {
-  background: #c7c7c7;
+  background: #5f8520;
+  color: #e8ffb7;
 }
 
 body.dashboard-mode .results-row--first .driver-cell,
 body.dashboard-mode .results-row--first .time-cell {
-  color: #ffffff;
+  color: #c8ff63;
 }
 
 body.dashboard-mode .results-row--empty .driver-cell,
 body.dashboard-mode .results-row--empty .time-cell {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(217, 255, 153, 0.68);
 }
 
 @media (max-width: 1120px) {
@@ -2091,4 +2117,446 @@ body.dashboard-mode .results-row--empty .time-cell {
   body.dashboard-mode .podium-card--p1 {
     transform: none;
   }
+}
+
+/* =========================
+   Dashboard Green + White Override
+   ========================= */
+
+body.dashboard-mode {
+  background: linear-gradient(180deg, #f8fff2 0%, #ecffd8 52%, #f7ffee 100%);
+  color: #16330f;
+}
+
+body.dashboard-mode #bg-canvas.bg-canvas-layer {
+  display: none !important;
+}
+
+body.dashboard-mode .top-bar {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(241, 255, 224, 0.9));
+  border-color: rgba(115, 176, 29, 0.32);
+  box-shadow:
+    0 12px 32px rgba(86, 136, 28, 0.14),
+    0 0 0 1px rgba(162, 215, 72, 0.15) inset;
+}
+
+body.dashboard-mode .live-state,
+body.dashboard-mode .live-pill {
+  background: linear-gradient(132deg, rgba(188, 255, 0, 0.28), rgba(148, 224, 28, 0.24));
+  border-color: rgba(141, 205, 36, 0.56);
+  color: #1f3d07;
+}
+
+body.dashboard-mode .panel-shell,
+body.dashboard-mode .panel-lite {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(188, 255, 0, 0.13), rgba(188, 255, 0, 0) 42%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(241, 255, 224, 0.88));
+  border-color: rgba(122, 182, 34, 0.3);
+  box-shadow:
+    0 16px 34px rgba(100, 152, 34, 0.14),
+    0 0 0 1px rgba(176, 224, 93, 0.12) inset;
+}
+
+body.dashboard-mode .module-head h2,
+body.dashboard-mode .camera-head h3,
+body.dashboard-mode .setup-note,
+body.dashboard-mode td,
+body.dashboard-mode th,
+body.dashboard-mode .score-controls label {
+  color: #19360e;
+}
+
+body.dashboard-mode .camera-card video {
+  background: #f6fff0;
+  border-color: rgba(128, 193, 30, 0.42);
+  box-shadow:
+    0 10px 24px rgba(102, 160, 32, 0.14),
+    0 0 0 1px rgba(175, 224, 92, 0.2) inset;
+  filter: contrast(1.04) saturate(1) brightness(1);
+}
+
+body.dashboard-mode .timer-display-rect {
+  border-color: rgba(122, 182, 34, 0.44);
+  background:
+    radial-gradient(circle at 22% 50%, rgba(188, 255, 0, 0.22), rgba(188, 255, 0, 0)),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(236, 253, 212, 0.9));
+  box-shadow:
+    inset 0 0 0 1px rgba(172, 220, 88, 0.16),
+    0 10px 24px rgba(96, 148, 30, 0.16);
+}
+
+body.dashboard-mode .timer-display-rect::before {
+  background: linear-gradient(135deg, rgba(188, 255, 0, 0.16), rgba(188, 255, 0, 0));
+}
+
+body.dashboard-mode .timer-display-rect::after {
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(120, 183, 26, 0.09) 0,
+    rgba(120, 183, 26, 0.09) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+body.dashboard-mode .timer-display-rect .timer {
+  color: #245f00;
+  text-shadow:
+    0 0 10px rgba(140, 206, 28, 0.28),
+    0 0 2px rgba(140, 206, 28, 0.24);
+}
+
+body.dashboard-mode .timer-display-rect.is-running .timer {
+  color: #2f7800;
+}
+
+body.dashboard-mode .timer-display-rect.is-paused .timer {
+  color: rgba(45, 101, 9, 0.9);
+}
+
+body.dashboard-mode .timer-display-rect.is-idle .timer {
+  opacity: 0;
+}
+
+body.dashboard-mode .control-input {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(128, 193, 30, 0.46);
+  color: #1d3d0d;
+}
+
+body.dashboard-mode .control-input::placeholder {
+  color: rgba(52, 95, 18, 0.58);
+}
+
+body.dashboard-mode .btn {
+  background: linear-gradient(130deg, rgba(255, 255, 255, 0.92), rgba(238, 253, 215, 0.92));
+  border-color: rgba(122, 182, 34, 0.5);
+  color: #245400;
+}
+
+body.dashboard-mode .btn:hover {
+  background: linear-gradient(130deg, rgba(248, 255, 238, 0.96), rgba(228, 248, 193, 0.94));
+  border-color: rgba(123, 182, 31, 0.72);
+}
+
+body.dashboard-mode .btn-accent {
+  background: linear-gradient(132deg, rgba(188, 255, 0, 0.98), rgba(150, 220, 14, 0.95));
+  border-color: rgba(185, 235, 100, 0.78);
+  color: #0f2303;
+}
+
+body.dashboard-mode .btn-accent:hover {
+  background: linear-gradient(132deg, rgba(208, 255, 80, 0.99), rgba(168, 236, 28, 0.96));
+  border-color: rgba(204, 245, 130, 0.86);
+}
+
+body.dashboard-mode .race-results-shell {
+  background:
+    linear-gradient(158deg, rgba(188, 255, 0, 0.12), rgba(188, 255, 0, 0) 36%),
+    linear-gradient(18deg, rgba(112, 173, 34, 0.14), rgba(112, 173, 34, 0) 40%),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.96), rgba(239, 254, 218, 0.9));
+  border-color: rgba(122, 182, 34, 0.36);
+}
+
+body.dashboard-mode .results-side-main {
+  color: rgba(38, 84, 10, 0.9);
+}
+
+body.dashboard-mode .results-side-sub {
+  color: rgba(122, 183, 28, 0.95);
+}
+
+body.dashboard-mode .results-event h2 {
+  color: #1e420a;
+}
+
+body.dashboard-mode .results-season {
+  color: rgba(93, 146, 21, 0.9);
+}
+
+body.dashboard-mode .results-brand {
+  color: rgba(45, 90, 11, 0.86);
+}
+
+body.dashboard-mode .podium-card {
+  border-color: rgba(122, 182, 34, 0.36);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.98), rgba(238, 253, 215, 0.92));
+}
+
+body.dashboard-mode .podium-card--p1 {
+  background: linear-gradient(140deg, rgba(241, 255, 214, 0.99), rgba(219, 246, 168, 0.96));
+  box-shadow: 0 0 18px rgba(150, 220, 14, 0.16);
+}
+
+body.dashboard-mode .podium-rank {
+  color: #2b6b00;
+}
+
+body.dashboard-mode .podium-name {
+  color: #17310d;
+}
+
+body.dashboard-mode .results-controls {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(238, 253, 214, 0.9)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(188, 255, 0, 0.06) 0,
+      rgba(188, 255, 0, 0.06) 4px,
+      transparent 4px,
+      transparent 10px
+    );
+}
+
+body.dashboard-mode .results-table-panel {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.96), rgba(241, 255, 222, 0.9));
+}
+
+body.dashboard-mode .results-table thead th {
+  border-bottom: 1px solid rgba(122, 182, 34, 0.38);
+  color: rgba(61, 110, 16, 0.9);
+}
+
+body.dashboard-mode .results-table tbody tr {
+  border-bottom: 1px solid rgba(122, 182, 34, 0.2);
+}
+
+body.dashboard-mode .results-table td {
+  color: #1a350d;
+}
+
+body.dashboard-mode .results-table .rank-badge {
+  color: #0f2303;
+  background: rgba(188, 255, 0, 0.92);
+}
+
+body.dashboard-mode .results-row--first .rank-badge {
+  background: #bcff00;
+}
+
+body.dashboard-mode .results-row--second .rank-badge {
+  background: #9fe336;
+}
+
+body.dashboard-mode .results-row--third .rank-badge {
+  background: #7ac92b;
+  color: #143206;
+}
+
+body.dashboard-mode .results-row--first .driver-cell,
+body.dashboard-mode .results-row--first .time-cell {
+  color: #2f7800;
+}
+
+body.dashboard-mode .results-row--empty .driver-cell,
+body.dashboard-mode .results-row--empty .time-cell {
+  color: rgba(59, 102, 19, 0.62);
+}
+
+/* =========================
+   Dashboard Flat White
+   ========================= */
+
+body.dashboard-mode {
+  background: #ffffff;
+  color: #000000;
+}
+
+body.dashboard-mode #bg-canvas.bg-canvas-layer {
+  display: none !important;
+}
+
+body.dashboard-mode .top-bar,
+body.dashboard-mode .panel-shell,
+body.dashboard-mode .panel-lite,
+body.dashboard-mode .race-results-shell,
+body.dashboard-mode .results-controls,
+body.dashboard-mode .results-table-panel,
+body.dashboard-mode .timer-display-rect,
+body.dashboard-mode .control-input,
+body.dashboard-mode .btn,
+body.dashboard-mode .btn-accent,
+body.dashboard-mode .live-state,
+body.dashboard-mode .live-pill,
+body.dashboard-mode .results-table .rank-badge,
+body.dashboard-mode .podium-card,
+body.dashboard-mode .podium-card--p1,
+body.dashboard-mode .results-modal-card {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.dashboard-mode .module-head h2,
+body.dashboard-mode .camera-head h3,
+body.dashboard-mode .setup-note,
+body.dashboard-mode td,
+body.dashboard-mode th,
+body.dashboard-mode .score-controls label,
+body.dashboard-mode .results-event h2,
+body.dashboard-mode .results-season,
+body.dashboard-mode .results-brand,
+body.dashboard-mode .results-side-main,
+body.dashboard-mode .results-side-sub,
+body.dashboard-mode .podium-rank,
+body.dashboard-mode .podium-name,
+body.dashboard-mode .control-input,
+body.dashboard-mode .btn,
+body.dashboard-mode .btn-accent,
+body.dashboard-mode .results-modal-head h3,
+body.dashboard-mode .timer-display-rect .timer {
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+
+body.dashboard-mode .camera-card video {
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+body.dashboard-mode .timer-display-rect::before,
+body.dashboard-mode .timer-display-rect::after {
+  display: none !important;
+}
+
+body.dashboard-mode .timer-display-rect.is-idle .timer {
+  opacity: 0;
+}
+
+body.dashboard-mode th,
+body.dashboard-mode td,
+body.dashboard-mode .results-table thead th,
+body.dashboard-mode .results-table tbody tr,
+body.dashboard-mode .results-modal-head {
+  border: 0 !important;
+  border-color: transparent !important;
+}
+
+body.dashboard-mode .results-table-panel {
+  overflow: visible;
+}
+
+body.dashboard-mode .results-more-row {
+  margin-top: clamp(0.35rem, 0.5vw, 0.55rem);
+  display: flex;
+  justify-content: flex-end;
+}
+
+body.dashboard-mode .results-more-btn[hidden] {
+  display: none !important;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+body.dashboard-mode .results-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.9rem, 2vw, 1.6rem);
+}
+
+body.dashboard-mode .results-modal.is-hidden {
+  display: none;
+}
+
+body.dashboard-mode .results-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+}
+
+body.dashboard-mode .results-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(880px, 100%);
+  max-height: min(86vh, 900px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+body.dashboard-mode .results-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: clamp(0.7rem, 1vw, 1rem);
+}
+
+body.dashboard-mode .results-modal-body {
+  overflow: auto;
+  padding: clamp(0.45rem, 0.7vw, 0.75rem);
+}
+
+body.dashboard-mode .results-table--modal {
+  min-width: 100%;
+}
+
+/* Timer Particle Morph Frame */
+body.dashboard-mode .timer-bottom-panel {
+  background: #ffffff !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+body.dashboard-mode .timer-bottom-panel::after {
+  content: none !important;
+}
+
+body.dashboard-mode .timer-bottom-panel:hover,
+body.dashboard-mode .timer-bottom-panel:active {
+  transform: none !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .timer-display-rect {
+  border: 1px solid rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 7px 18px rgba(0, 0, 0, 0.07) !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-running {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 42, 42, 0.48),
+    0 10px 22px rgba(0, 0, 0, 0.09) !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .timer-display-rect .timer {
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-running .timer {
+  color: #d00000 !important;
+}
+
+body.dashboard-mode .timer-bottom-panel .timer-display-rect.is-idle .timer {
+  opacity: 1 !important;
+}
+
+body.dashboard-mode .timer-fx-canvas {
+  opacity: 1;
 }

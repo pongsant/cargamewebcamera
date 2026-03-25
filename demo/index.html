@@ -78,8 +78,6 @@
   </style>
 </head>
 <body class="dashboard-mode">
-  <div id="bg-canvas" class="bg-canvas-layer" aria-hidden="true"></div>
-
   <header class="top-bar">
     <div class="top-title-wrap">
       <model-viewer
@@ -107,9 +105,9 @@
         <div class="module-head">
           <h2>Timer Control</h2>
         </div>
-        <div id="timerDisplayFrame" class="timer-display-rect is-paused" aria-live="polite">
+        <div id="timerDisplayFrame" class="timer-display-rect is-paused is-idle" aria-live="polite">
           <canvas id="timerFxCanvas" class="timer-fx-canvas" aria-hidden="true"></canvas>
-          <p id="timer" class="timer">00:00.00</p>
+          <p id="timer" class="timer"></p>
         </div>
         <div class="timer-actions">
           <button id="startBtn" class="btn btn-accent" type="button">Start</button>
@@ -210,10 +208,35 @@
             </thead>
             <tbody id="scoreboardBody"></tbody>
           </table>
+          <div class="results-more-row">
+            <button id="moreResultsBtn" class="btn results-more-btn" type="button">More</button>
+          </div>
         </div>
       </div>
     </div>
   </section>
+
+  <div id="moreResultsModal" class="results-modal is-hidden" aria-hidden="true">
+    <button class="results-modal-backdrop" type="button" data-close-modal="true" aria-label="Close full ranking"></button>
+    <div class="results-modal-card panel-shell" role="dialog" aria-modal="true" aria-labelledby="moreResultsTitle">
+      <div class="results-modal-head">
+        <h3 id="moreResultsTitle">Full Ranking</h3>
+        <button id="closeMoreResultsBtn" class="btn btn-accent" type="button">Close</button>
+      </div>
+      <div class="results-modal-body">
+        <table class="results-table results-table--modal">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Driver</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="scoreboardModalBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>

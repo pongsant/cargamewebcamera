@@ -81,25 +81,24 @@ if (mount) {
       const radius = Math.min(width, height) * 0.58;
 
       const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, "#050505");
-      gradient.addColorStop(0.48, "#0d0d0e");
-      gradient.addColorStop(1, "#141416");
+      gradient.addColorStop(0, "#FFFFFF");
+      gradient.addColorStop(1, "#ADFF2F");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
       const ringA = ctx.createRadialGradient(cx - (radius * 0.35), cy, 0, cx - (radius * 0.35), cy, radius * 0.82);
-      ringA.addColorStop(0, "rgba(255, 255, 255, 0.14)");
-      ringA.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ringA.addColorStop(0, "rgba(188, 255, 0, 0.22)");
+      ringA.addColorStop(1, "rgba(188, 255, 0, 0)");
       ctx.fillStyle = ringA;
       ctx.fillRect(0, 0, width, height);
 
       const ringB = ctx.createRadialGradient(cx + (radius * 0.34), cy, 0, cx + (radius * 0.34), cy, radius * 0.84);
-      ringB.addColorStop(0, "rgba(180, 180, 180, 0.12)");
-      ringB.addColorStop(1, "rgba(180, 180, 180, 0)");
+      ringB.addColorStop(0, "rgba(255, 255, 255, 0.16)");
+      ringB.addColorStop(1, "rgba(255, 255, 255, 0)");
       ctx.fillStyle = ringB;
       ctx.fillRect(0, 0, width, height);
 
-      ctx.fillStyle = "#f8f8f8";
+      ctx.fillStyle = "#ddff9a";
       for (let i = 0; i < stars.length; i += 1) {
         const star = stars[i];
         const twinkle = 0.3 + (0.7 * (0.5 + (0.5 * Math.sin((time * star.speed) + star.phase))));
@@ -126,9 +125,8 @@ if (mount) {
         const radius = baseRadius * (0.8 + ((reduceMotion ? 0 : Math.sin((timeMs * node.speed * 1.7) + (node.phase * 1.3))) * node.radiusAmp));
         const px = cx + (Math.cos(angle) * radius);
         const py = cy + (Math.sin(angle) * radius * 0.88);
-        const tone = 62 - (12 * Math.cos(angle));
 
-        points.push({ x: px, y: py, angle, tone, node });
+        points.push({ x: px, y: py, angle, node });
       }
 
       ctx.save();
@@ -146,7 +144,7 @@ if (mount) {
         const c2x = cx + (Math.cos(pair.angle - (Math.PI * 0.5)) * bend);
         const c2y = cy + (Math.sin(pair.angle - (Math.PI * 0.5)) * bend * 0.8);
 
-        ctx.strokeStyle = `hsla(0, 0%, ${point.tone}%, ${0.06 + point.node.alpha})`;
+        ctx.strokeStyle = `rgba(173, 255, 47, ${0.06 + point.node.alpha})`;
         ctx.lineWidth = 0.38 + (point.node.size * 0.34);
         ctx.beginPath();
         ctx.moveTo(point.x, point.y);
@@ -157,7 +155,7 @@ if (mount) {
       for (let i = 0; i < points.length; i += 1) {
         const point = points[i];
         const next = points[(i + 1) % points.length];
-        ctx.strokeStyle = `hsla(0, 0%, ${point.tone - 8}%, 0.12)`;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
         ctx.lineWidth = 0.34;
         ctx.beginPath();
         ctx.moveTo(point.x, point.y);
@@ -165,7 +163,7 @@ if (mount) {
         ctx.stroke();
       }
 
-      ctx.shadowColor = "rgba(255, 255, 255, 0.45)";
+      ctx.shadowColor = "rgba(188, 255, 0, 0.45)";
       ctx.shadowBlur = 5;
       for (let i = 0; i < points.length; i += 1) {
         const point = points[i];
@@ -179,8 +177,8 @@ if (mount) {
       ctx.restore();
 
       const centerGlow = ctx.createRadialGradient(cx, cy, innerRadius * 0.2, cx, cy, innerRadius * 1.7);
-      centerGlow.addColorStop(0, "rgba(255, 255, 255, 0.12)");
-      centerGlow.addColorStop(1, "rgba(255, 255, 255, 0)");
+      centerGlow.addColorStop(0, "rgba(188, 255, 0, 0.16)");
+      centerGlow.addColorStop(1, "rgba(188, 255, 0, 0)");
       ctx.fillStyle = centerGlow;
       ctx.fillRect(0, 0, width, height);
 
@@ -227,6 +225,7 @@ const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const resetBtn = document.getElementById("resetBtn");
 const scoreboardBody = document.getElementById("scoreboardBody");
+const scoreboardModalBody = document.getElementById("scoreboardModalBody");
 const podiumP1Name = document.getElementById("podiumP1Name");
 const podiumP2Name = document.getElementById("podiumP2Name");
 const podiumP3Name = document.getElementById("podiumP3Name");
@@ -234,6 +233,9 @@ const playerNameInput = document.getElementById("playerNameInput");
 const addPlayerBtn = document.getElementById("addPlayerBtn");
 const playerSelect = document.getElementById("playerSelect");
 const saveTimeBtn = document.getElementById("saveTimeBtn");
+const moreResultsBtn = document.getElementById("moreResultsBtn");
+const moreResultsModal = document.getElementById("moreResultsModal");
+const closeMoreResultsBtn = document.getElementById("closeMoreResultsBtn");
 const scoreStatus = document.getElementById("scoreStatus");
 const wsStatusEl = document.getElementById("wsStatus");
 const penaltyCountEl = document.getElementById("penaltyCount");
@@ -258,6 +260,8 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   let latestPenaltyTime = 0;
   let pendingCommand = null;
   const players = [];
+  const PREVIEW_RANK_LIMIT = 8;
+  const TIMER_ZERO_TEXT = "00:00.00";
   const timerDisplayFrame = document.getElementById("timerDisplayFrame");
   const timerFxCanvas = document.getElementById("timerFxCanvas");
 
@@ -275,8 +279,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
 
     const TAU = Math.PI * 2;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pickDigit = () => String(Math.floor(Math.random() * 10));
-    const particleCount = window.innerWidth < 900 ? 160 : 240;
+    const particleCount = window.innerWidth < 900 ? 180 : 280;
 
     let width = 1;
     let height = 1;
@@ -284,23 +287,24 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     let frameId = null;
     let lastTs = 0;
     let running = false;
+    let gathered = false;
+    let focus = 0;
     let energy = 0.35;
     let flash = 0;
     let destroyed = false;
 
     const particles = Array.from({ length: particleCount }, () => ({
-      digit: pickDigit(),
-      theta: Math.random() * TAU,
-      orbit: Math.random(),
+      progress: Math.random(),
+      drift: (Math.random() < 0.5 ? -1 : 1) * (0.0002 + (Math.random() * 0.00036)),
+      scatter: Math.random(),
       lane: (Math.random() * 2) - 1,
-      size: 11 + (Math.random() * 16),
-      speed: (0.00045 + (Math.random() * 0.001)) * (Math.random() < 0.9 ? 1 : -1),
-      alpha: 0.16 + (Math.random() * 0.64),
+      size: 1.1 + (Math.random() * 2.4),
+      alpha: 0.22 + (Math.random() * 0.68),
       phase: Math.random() * TAU,
       warp: 0.6 + (Math.random() * 1.4),
     }));
 
-    const drawRoundedRect = (x, y, w, h, radius) => {
+    const drawRoundedRectPath = (x, y, w, h, radius) => {
       const r = Math.max(0, Math.min(radius, Math.min(w, h) * 0.5));
       context.beginPath();
       context.moveTo(x + r, y);
@@ -313,6 +317,70 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
       context.lineTo(x, y + r);
       context.quadraticCurveTo(x, y, x + r, y);
       context.closePath();
+    };
+
+    const pointOnRoundedRect = (progress, inset, radius) => {
+      const w = Math.max(4, width - (inset * 2));
+      const h = Math.max(4, height - (inset * 2));
+      const r = Math.max(1, Math.min(radius, Math.min(w, h) * 0.5));
+      const straightH = Math.max(0, w - (2 * r));
+      const straightV = Math.max(0, h - (2 * r));
+      const arcLen = (Math.PI * 0.5) * r;
+      const perimeter = (2 * straightH) + (2 * straightV) + (4 * arcLen);
+      let cursor = ((progress % 1) + 1) % 1;
+      cursor *= perimeter;
+
+      if (cursor <= straightH) {
+        return { x: inset + r + cursor, y: inset };
+      }
+      cursor -= straightH;
+
+      if (cursor <= arcLen) {
+        const angle = (-Math.PI * 0.5) + (cursor / r);
+        return {
+          x: inset + w - r + (Math.cos(angle) * r),
+          y: inset + r + (Math.sin(angle) * r),
+        };
+      }
+      cursor -= arcLen;
+
+      if (cursor <= straightV) {
+        return { x: inset + w, y: inset + r + cursor };
+      }
+      cursor -= straightV;
+
+      if (cursor <= arcLen) {
+        const angle = cursor / r;
+        return {
+          x: inset + w - r + (Math.cos(angle) * r),
+          y: inset + h - r + (Math.sin(angle) * r),
+        };
+      }
+      cursor -= arcLen;
+
+      if (cursor <= straightH) {
+        return { x: inset + w - r - cursor, y: inset + h };
+      }
+      cursor -= straightH;
+
+      if (cursor <= arcLen) {
+        const angle = (Math.PI * 0.5) + (cursor / r);
+        return {
+          x: inset + r + (Math.cos(angle) * r),
+          y: inset + h - r + (Math.sin(angle) * r),
+        };
+      }
+      cursor -= arcLen;
+
+      if (cursor <= straightV) {
+        return { x: inset, y: inset + h - r - cursor };
+      }
+
+      const angle = Math.PI + ((cursor - straightV) / r);
+      return {
+        x: inset + r + (Math.cos(angle) * r),
+        y: inset + r + (Math.sin(angle) * r),
+      };
     };
 
     const resize = () => {
@@ -335,92 +403,132 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
       lastTs = timeMs;
 
       const targetEnergy = running ? 1 : 0.34;
+      const targetFocus = gathered ? 1 : 0;
       energy += (targetEnergy - energy) * 0.08;
+      focus += (targetFocus - focus) * 0.085;
       flash = Math.max(0, flash - (dt * 0.0045));
 
       context.clearRect(0, 0, width, height);
 
-      context.save();
-      drawRoundedRect(0.5, 0.5, width - 1, height - 1, Math.min(20, height * 0.24));
-      context.clip();
+      const inset = Math.max(6, Math.min(16, height * 0.11));
+      const rectWidth = Math.max(8, width - (inset * 2));
+      const rectHeight = Math.max(8, height - (inset * 2));
+      const cornerRadius = Math.min(16, rectHeight * 0.32, rectWidth * 0.32);
 
-      const mist = context.createRadialGradient(width * 0.22, height * 0.5, 0, width * 0.5, height * 0.5, width * 0.74);
-      mist.addColorStop(0, `rgba(255, 255, 255, ${0.06 + (flash * 0.1)})`);
-      mist.addColorStop(1, "rgba(255, 255, 255, 0)");
-      context.fillStyle = mist;
-      context.fillRect(0, 0, width, height);
+      const frameFill = context.createLinearGradient(0, inset, 0, height - inset);
+      frameFill.addColorStop(0, "rgba(255, 255, 255, 0.74)");
+      frameFill.addColorStop(1, "rgba(255, 255, 255, 0.94)");
+      context.fillStyle = frameFill;
+      drawRoundedRectPath(inset, inset, rectWidth, rectHeight, cornerRadius);
+      context.fill();
+
+      const activeColor = running ? "255, 42, 42" : "0, 0, 0";
+
+      context.strokeStyle = `rgba(${activeColor}, ${0.16 + (focus * 0.18)})`;
+      context.lineWidth = 1.1 + (focus * 0.35);
+      drawRoundedRectPath(inset, inset, rectWidth, rectHeight, cornerRadius);
+      context.stroke();
+
+      const pulseBand = context.createLinearGradient(0, height * 0.5, width, height * 0.5);
+      pulseBand.addColorStop(0, `rgba(${activeColor}, 0)`);
+      pulseBand.addColorStop(0.5, `rgba(${activeColor}, ${0.16 + (focus * 0.22)})`);
+      pulseBand.addColorStop(1, `rgba(${activeColor}, 0)`);
+      context.strokeStyle = pulseBand;
+      context.lineWidth = 1.2 + (focus * 0.4);
+      drawRoundedRectPath(
+        inset + 0.4,
+        inset + 0.4,
+        Math.max(6, rectWidth - 0.8),
+        Math.max(6, rectHeight - 0.8),
+        Math.max(2, cornerRadius - 0.4),
+      );
+      context.stroke();
 
       const cx = width * 0.5;
-      const cy = height * 0.53;
-      const radiusX = width * 0.44;
-      const radiusY = height * 0.34;
+      const cy = height * 0.5;
       const speedScale = reduceMotion ? 0.28 : 1;
-
-      context.textAlign = "center";
-      context.textBaseline = "middle";
 
       for (let i = 0; i < particles.length; i += 1) {
         const particle = particles[i];
-        particle.theta += particle.speed * dt * (0.5 + (energy * 1.2)) * speedScale;
+        particle.progress += particle.drift * dt * (0.54 + (energy * 0.92)) * speedScale;
+        particle.progress = ((particle.progress % 1) + 1) % 1;
 
-        const swirl = particle.theta + (Math.sin((timeMs * 0.0011 * particle.warp) + particle.phase) * 0.18);
-        const depth = (Math.cos(swirl + (particle.phase * 0.7)) + 1) * 0.5;
-        const orbit = 0.28 + (particle.orbit * 0.78);
-        const spread = 0.58 + (depth * 0.46);
+        const borderPoint = pointOnRoundedRect(
+          particle.progress,
+          inset + 1.5,
+          Math.max(2, cornerRadius - 1.5),
+        );
 
-        const x = cx + (Math.cos(swirl) * radiusX * orbit * spread);
-        const y = cy
-          + (Math.sin((swirl * 1.22) + (particle.phase * 0.32)) * radiusY * (0.42 + (particle.orbit * 0.72)))
-          + (particle.lane * height * 0.09 * (1 - depth));
+        const nxRaw = borderPoint.x - cx;
+        const nyRaw = borderPoint.y - cy;
+        const norm = Math.max(0.001, Math.hypot(nxRaw, nyRaw));
+        const nx = nxRaw / norm;
+        const ny = nyRaw / norm;
 
-        const alpha = Math.min(1, particle.alpha * (0.2 + (depth * 0.82)) * (0.42 + (energy * 0.7)));
-        if (alpha < 0.025) continue;
+        const wave = Math.sin((timeMs * 0.00125 * particle.warp) + particle.phase);
+        const farDistance = 14 + (particle.scatter * 36) + ((wave + 1) * 4.8);
+        const nearDistance = 1 + (particle.scatter * 3.4);
+        const distance = farDistance + ((nearDistance - farDistance) * focus);
+        const laneDrift = (1 - focus) * particle.lane * 5.5;
 
-        const fontSize = particle.size * (0.58 + (depth * 0.9));
+        const x = borderPoint.x + (nx * distance) + (ny * laneDrift);
+        const y = borderPoint.y + (ny * distance) - (nx * laneDrift);
+
+        const alpha = Math.min(1, particle.alpha * (0.24 + (focus * 0.86)));
+        if (alpha < 0.03) continue;
+
+        const pulse = 0.76 + ((Math.sin((timeMs * 0.0042) + particle.phase) + 1) * 0.24);
+        const radius = particle.size * (0.6 + (focus * 0.36)) * pulse;
         context.globalAlpha = alpha;
-        context.fillStyle = depth > 0.72 ? "#ffffff" : depth > 0.42 ? "#d2d2d2" : "#8f8f8f";
-        context.font = `${fontSize.toFixed(2)}px "HelveticaNeueCustom", "Helvetica Neue", Arial, sans-serif`;
-        context.fillText(particle.digit, x, y);
+        context.fillStyle = running ? "#ff2a2a" : "#000000";
+        context.beginPath();
+        context.arc(x, y, radius, 0, TAU);
+        context.fill();
+      }
 
-        if (Math.random() < (0.003 + (energy * 0.008))) {
-          particle.digit = pickDigit();
-        }
+      if (flash > 0.01) {
+        context.globalAlpha = Math.min(0.22, flash * 0.28);
+        context.strokeStyle = running ? "rgba(255, 42, 42, 0.9)" : "rgba(0, 0, 0, 0.9)";
+        context.lineWidth = 2;
+        drawRoundedRectPath(
+          inset + 1,
+          inset + 1,
+          Math.max(6, rectWidth - 2),
+          Math.max(6, rectHeight - 2),
+          Math.max(2, cornerRadius - 1),
+        );
+        context.stroke();
       }
 
       context.globalAlpha = 1;
-      const beam = context.createLinearGradient(0, cy, width, cy);
-      beam.addColorStop(0, "rgba(255, 255, 255, 0)");
-      beam.addColorStop(0.5, `rgba(255, 255, 255, ${0.08 + (energy * 0.14)})`);
-      beam.addColorStop(1, "rgba(255, 255, 255, 0)");
-      context.strokeStyle = beam;
-      context.lineWidth = 1;
-      context.beginPath();
-      context.moveTo(width * 0.08, cy);
-      context.lineTo(width * 0.92, cy);
-      context.stroke();
-
-      context.restore();
       frameId = requestAnimationFrame(render);
     };
 
     const setRunning = (nextRunning) => {
       running = Boolean(nextRunning);
+      if (running) {
+        gathered = true;
+        timerDisplayFrame.classList.remove("is-idle");
+      }
       timerDisplayFrame.classList.toggle("is-running", running);
       timerDisplayFrame.classList.toggle("is-paused", !running);
     };
 
     const reset = () => {
       running = false;
+      gathered = false;
+      focus = 0;
       flash = 1;
       lastTs = 0;
 
       particles.forEach((particle) => {
-        particle.theta = Math.random() * TAU;
-        particle.digit = pickDigit();
+        particle.progress = Math.random();
+        particle.phase = Math.random() * TAU;
       });
 
       timerDisplayFrame.classList.remove("is-running");
       timerDisplayFrame.classList.add("is-paused");
+      timerDisplayFrame.classList.add("is-idle");
       timerDisplayFrame.classList.remove("is-reset");
       // Trigger reset pulse animation on each reset click.
       void timerDisplayFrame.offsetWidth;
@@ -445,6 +553,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   };
 
   const timerFxController = createTimerFieldEffect();
+  if (timerEl) timerEl.textContent = TIMER_ZERO_TEXT;
 
   const formatTime = (ms) => {
     const totalCentiseconds = Math.floor(ms / 10);
@@ -471,6 +580,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   const startFrontendTimer = () => {
     if (timerRafId !== null) return;
     timerFxController.setRunning(true);
+    timerEl.textContent = TIMER_ZERO_TEXT;
     startTime = performance.now();
     timerRafId = requestAnimationFrame(update);
   };
@@ -494,7 +604,7 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     }
     startTime = 0;
     elapsedBefore = 0;
-    timerEl.textContent = "00:00.00";
+    timerEl.textContent = TIMER_ZERO_TEXT;
     timerFxController.reset();
   };
 
@@ -563,40 +673,89 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
     if (podiumP3Name) podiumP3Name.textContent = rankedPlayers[2]?.name || "No Driver";
   };
 
+  const setMoreModalOpen = (open) => {
+    if (!moreResultsModal) return;
+    moreResultsModal.classList.toggle("is-hidden", !open);
+    moreResultsModal.setAttribute("aria-hidden", open ? "false" : "true");
+    document.body.classList.toggle("modal-open", open);
+  };
+
+  const createEmptyScoreRow = () => {
+    const row = document.createElement("tr");
+    row.className = "results-row results-row--empty";
+    row.innerHTML = `
+      <td class="rank-cell"><span class="rank-badge">-</span></td>
+      <td class="driver-cell">No score yet</td>
+      <td class="time-cell">--:--.--</td>
+    `;
+    return row;
+  };
+
+  const createPlayerScoreRow = (player, index) => {
+    const hasScore = Number.isFinite(player.bestMs);
+    const row = document.createElement("tr");
+    row.className = `results-row ${
+      index === 0 ? "results-row--first" : index === 1 ? "results-row--second" : index === 2 ? "results-row--third" : ""
+    }`.trim();
+    row.innerHTML = `
+      <td class="rank-cell"><span class="rank-badge">${index + 1}</span></td>
+      <td class="driver-cell">${player.name}</td>
+      <td class="time-cell">${hasScore ? formatTime(player.bestMs) : "--:--.--"}</td>
+    `;
+    if (!hasScore) row.classList.add("results-row--empty");
+    return row;
+  };
+
+  const getScoredPlayers = () => (
+    players
+      .filter((player) => Number.isFinite(player.bestMs))
+      .sort((a, b) => a.bestMs - b.bestMs)
+  );
+
+  const getRankedPlayers = () => {
+    const scored = getScoredPlayers();
+    const unscored = players
+      .filter((player) => !Number.isFinite(player.bestMs))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return [...scored, ...unscored];
+  };
+
   const renderScoreboard = () => {
     if (!scoreboardBody) return;
     scoreboardBody.innerHTML = "";
+    if (scoreboardModalBody) scoreboardModalBody.innerHTML = "";
 
-    const ranked = players
-      .filter((player) => Number.isFinite(player.bestMs))
-      .sort((a, b) => a.bestMs - b.bestMs);
+    const ranked = getRankedPlayers();
+    const scored = getScoredPlayers();
+    setPodiumNames(scored);
 
-    setPodiumNames(ranked);
-
-    if (ranked.length === 0) {
-      const row = document.createElement("tr");
-      row.className = "results-row results-row--empty";
-      row.innerHTML = `
-        <td class="rank-cell"><span class="rank-badge">-</span></td>
-        <td class="driver-cell">No score yet</td>
-        <td class="time-cell">--:--.--</td>
-      `;
-      scoreboardBody.appendChild(row);
+    if (players.length === 0) {
+      scoreboardBody.appendChild(createEmptyScoreRow());
+      if (scoreboardModalBody) scoreboardModalBody.appendChild(createEmptyScoreRow());
+      if (moreResultsBtn) {
+        moreResultsBtn.hidden = false;
+        moreResultsBtn.textContent = "More";
+      }
       return;
     }
 
-    ranked.forEach((player, index) => {
-      const row = document.createElement("tr");
-      row.className = `results-row ${
-        index === 0 ? "results-row--first" : index === 1 ? "results-row--second" : index === 2 ? "results-row--third" : ""
-      }`.trim();
-      row.innerHTML = `
-        <td class="rank-cell"><span class="rank-badge">${index + 1}</span></td>
-        <td class="driver-cell">${player.name}</td>
-        <td class="time-cell">${formatTime(player.bestMs)}</td>
-      `;
-      scoreboardBody.appendChild(row);
+    const preview = ranked.slice(0, PREVIEW_RANK_LIMIT);
+    preview.forEach((player, index) => {
+      scoreboardBody.appendChild(createPlayerScoreRow(player, index));
     });
+
+    if (scoreboardModalBody) {
+      ranked.forEach((player, index) => {
+        scoreboardModalBody.appendChild(createPlayerScoreRow(player, index));
+      });
+    }
+
+    if (moreResultsBtn) {
+      const hasMoreRows = ranked.length > PREVIEW_RANK_LIMIT;
+      moreResultsBtn.hidden = false;
+      moreResultsBtn.textContent = hasMoreRows ? `More (${ranked.length - PREVIEW_RANK_LIMIT})` : "More";
+    }
   };
 
   const addPlayer = () => {
@@ -811,6 +970,26 @@ if (timerEl && startBtn && stopBtn && resetBtn) {
   });
 
   saveTimeBtn?.addEventListener("click", saveTimeForPlayer);
+
+  moreResultsBtn?.addEventListener("click", () => {
+    setMoreModalOpen(true);
+  });
+
+  closeMoreResultsBtn?.addEventListener("click", () => {
+    setMoreModalOpen(false);
+  });
+
+  moreResultsModal?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest("[data-close-modal='true']")) {
+      setMoreModalOpen(false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setMoreModalOpen(false);
+  });
 
   window.addEventListener("beforeunload", () => {
     manualSocketClose = true;
