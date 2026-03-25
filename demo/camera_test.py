@@ -23,6 +23,8 @@ WEBSOCKET_MAX_SIZE = 8_000_000
 WAIT_FOR_BROWSER_FIRST_FRAME_SECONDS = 10.0
 INTRO_VIDEO_FILENAME = "Race_Track_done.MP4"
 INTRO_FALLBACK_FPS = 30.0
+DISPLAY_WINDOW_NAME = "Race Track Game"
+HUD_PANEL_HEIGHT = 170
 
 command_queue = queue.Queue()
 frame_queue = queue.Queue(maxsize=FRAME_QUEUE_MAX)
@@ -278,12 +280,42 @@ def play_intro_clip():
         if not ok or intro_frame is None:
             break
 
-        cv2.imshow("frame", intro_frame)
+        cv2.imshow(DISPLAY_WINDOW_NAME, intro_frame)
         key = cv2.waitKey(frame_delay_ms) & 0xFF
         if key in (27, ord(" ")):
             break
 
     intro_cap.release()
+
+
+def open_looping_background_clip():
+    clip_path = os.path.join(os.path.dirname(__file__), INTRO_VIDEO_FILENAME)
+    if not os.path.exists(clip_path):
+        print(f"Background clip not found: {clip_path}. Using camera frame as background.")
+        return None
+
+    clip_cap = cv2.VideoCapture(clip_path)
+    if not clip_cap.isOpened():
+        print(f"Could not open background clip: {clip_path}. Using camera frame as background.")
+        return None
+
+    return clip_cap
+
+
+def read_background_frame(clip_cap, width, height):
+    if clip_cap is None:
+        return None
+
+    ok, clip_frame = clip_cap.read()
+    if not ok or clip_frame is None:
+        clip_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        ok, clip_frame = clip_cap.read()
+        if not ok or clip_frame is None:
+            return None
+
+    if clip_frame.shape[0] != height or clip_frame.shape[1] != width:
+        clip_frame = cv2.resize(clip_frame, (width, height), interpolation=cv2.INTER_LINEAR)
+    return clip_frame
 
 
 def process_wait_phase_commands():
@@ -309,6 +341,16 @@ def process_wait_phase_commands():
 
 server_thread = threading.Thread(target=start_websocket_server, daemon=True)
 server_thread.start()
+
+push_event({
+    "type": "status",
+    "message": "Python is playing intro clip...",
+})
+play_intro_clip()
+push_event({
+    "type": "status",
+    "message": "Intro finished. Camera feed is ready.",
+})
 
 fallback_cap, fallback_camera_index = open_local_fallback_camera()
 if not fallback_cap:
@@ -380,6 +422,7 @@ frame = frame_packet["frame"]
 print(f"Detection source selected: {frame_packet['sourceLabel']}")
 
 cam_h, cam_w = frame.shape[:2]
+background_clip_cap = open_looping_background_clip()
 
 scale_x = cam_w / GUIDE_W
 scale_y = cam_h / GUIDE_H
@@ -466,7 +509,7 @@ try:
             time.sleep(FRAME_IDLE_SLEEP)
             continue
 
-        frame = frame_packet["frame"]
+        detection_frame = frame_packet["frame"]
         source_label = str(frame_packet.get("sourceLabel") or "Unknown source")
         source_transport = "WEB" if frame_packet.get("isWeb") else "LOCAL"
         if source_label != last_source_label:
@@ -476,10 +519,14 @@ try:
             })
             last_source_label = source_label
 
-        if frame.shape[0] != cam_h or frame.shape[1] != cam_w:
-            frame = cv2.resize(frame, (cam_w, cam_h), interpolation=cv2.INTER_LINEAR)
+        if detection_frame.shape[0] != cam_h or detection_frame.shape[1] != cam_w:
+            detection_frame = cv2.resize(detection_frame, (cam_w, cam_h), interpolation=cv2.INTER_LINEAR)
 
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        frame = read_background_frame(background_clip_cap, cam_w, cam_h)
+        if frame is None:
+            frame = detection_frame.copy()
+
+        hsv = cv2.cvtColor(detection_frame, cv2.COLOR_BGR2HSV)
         green_mask = cv2.inRange(hsv, lower, upper)
         contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -508,6 +555,7 @@ try:
                 biggest_area = area
 
         if biggest is not None:
+            cv2.drawContours(frame, [biggest], -1, (0, 255, 0), 2)
             x, y, w, h = cv2.boundingRect(biggest)
             cx = x + w // 2
             cy = y + h // 2
@@ -571,6 +619,10 @@ try:
         elif game["timer_finished"]:
             display_time = game["raw_time"]
 
+        hud_overlay = frame.copy()
+        cv2.rectangle(hud_overlay, (0, 0), (cam_w, min(HUD_PANEL_HEIGHT, cam_h)), (0, 0, 0), -1)
+        frame = cv2.addWeighted(hud_overlay, 0.5, frame, 0.5, 0)
+
         if cx is None:
             cv2.putText(frame, "NO CAR DETECTED", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
         elif car_inside_lane:
@@ -579,22 +631,38 @@ try:
             cv2.putText(frame, "OUT OF LANE", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         if game["game_running"]:
-            cv2.putText(frame, f"TIME: {display_time:.2f}s", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+            cv2.putText(frame, f"TIME: {display_time:.2f}s", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
+            cv2.putText(
+                frame,
+                f"PENALTY COUNT: {game['outside_count']} (+{game['outside_count'] * PENALTY_SECONDS:.2f}s)",
+                (20, 110),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 165, 255),
+                2,
+            )
         elif game["timer_finished"]:
-            cv2.putText(frame, f"RAW TIME: {game['raw_time']:.2f}s", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
-            cv2.putText(frame, f"OUTSIDE COUNT: {game['outside_count']}", (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 165, 255), 2)
-            cv2.putText(frame, f"FINAL TIME: {game['final_time']:.2f}s", (20, 160), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.putText(frame, f"RAW TIME: {game['raw_time']:.2f}s", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 0), 2)
+            cv2.putText(
+                frame,
+                f"PENALTY COUNT: {game['outside_count']} (+{game['outside_count'] * PENALTY_SECONDS:.2f}s)",
+                (20, 110),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 165, 255),
+                2,
+            )
+            cv2.putText(frame, f"FINAL TIME: {game['final_time']:.2f}s", (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.95, (0, 255, 255), 2)
         else:
-            cv2.putText(frame, "Press Start on the website", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(frame, "TIME: 0.00s", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 0), 2)
+            cv2.putText(frame, "PENALTY COUNT: 0 (+0.00s)", (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
+            cv2.putText(frame, "Press Start on the website", (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
 
-        cv2.putText(frame, f"SOURCE ({source_transport}): {source_label}", (20, cam_h - 55), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 220, 120), 2)
-        cv2.putText(frame, f"PENALTY COUNT: {game['outside_count']}", (20, cam_h - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
+        cv2.putText(frame, f"SOURCE ({source_transport}): {source_label}", (20, min(165, cam_h - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 220, 120), 2)
         cv2.putText(frame, "START", (start_line_a[0] - 20, start_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         cv2.putText(frame, "FINISH", (finish_line_a[0] - 30, finish_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
-        cv2.imshow("frame", frame)
-        cv2.imshow("green mask", green_mask)
-        cv2.imshow("lane mask", lane_mask)
+        cv2.imshow(DISPLAY_WINDOW_NAME, frame)
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord("s"):
@@ -606,6 +674,8 @@ try:
 finally:
     if fallback_cap is not None:
         fallback_cap.release()
+    if background_clip_cap is not None:
+        background_clip_cap.release()
     cv2.destroyAllWindows()
     if server_loop is not None:
         server_loop.call_soon_threadsafe(server_loop.stop)
