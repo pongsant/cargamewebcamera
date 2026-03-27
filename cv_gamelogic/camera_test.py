@@ -165,7 +165,7 @@ while True:
 
     # draw start / finish lines
     cv2.line(overlay, start_line_a, start_line_b, (0, 0, 255), 3)
-    cv2.line(overlay, finish_line_a, finish_line_b, (0, 255, 0), 3)
+    cv2.line(overlay, finish_line_a, finish_line_b, (255, 0, 0), 3)
 
     frame = cv2.addWeighted(overlay, 0.45, frame, 0.55, 0)
 
@@ -231,12 +231,11 @@ while True:
             (cx, cy), end_pt, finish_dir
         )
 
-        if timer_started and not timer_finished:
-            if was_before_finish and not current_before_finish:
-                raw_time = time.time() - start_time
-                final_time = raw_time + outside_count * penalty_seconds
-                timer_started = False
-                timer_finished = True
+        if timer_started and not timer_finished and not current_before_finish:
+            raw_time = time.time() - start_time
+            final_time = raw_time + outside_count * penalty_seconds
+            timer_started = False
+            timer_finished = True
 
         was_before_finish = current_before_finish
 
@@ -283,7 +282,7 @@ while True:
     cv2.putText(frame, "START", (start_line_a[0] - 20, start_line_a[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
     cv2.putText(frame, "FINISH", (finish_line_a[0] - 30, finish_line_a[1] - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
 
     cv2.imshow("frame", frame)
     cv2.imshow("green mask", green_mask)

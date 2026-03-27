@@ -211,7 +211,7 @@ class RaceEngine:
             lineType=cv2.LINE_AA,
         )
         cv2.line(overlay, self.start_line_a, self.start_line_b, (0, 0, 255), 3)
-        cv2.line(overlay, self.finish_line_a, self.finish_line_b, (0, 255, 0), 3)
+        cv2.line(overlay, self.finish_line_a, self.finish_line_b, (255, 0, 0), 3)
         view = cv2.addWeighted(overlay, 0.45, frame, 0.55, 0)
 
         if bounding_box is not None:
@@ -240,7 +240,7 @@ class RaceEngine:
         cv2.putText(view, f"PENALTY COUNT: {self.outside_count}", (20, self.cam_h - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
         cv2.putText(view, f"AREA: {contour_area:.0f}  MASK: {mask_ratio:.3f}", (20, self.cam_h - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         cv2.putText(view, "START", (self.start_line_a[0] - 20, self.start_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-        cv2.putText(view, "FINISH", (self.finish_line_a[0] - 30, self.finish_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.putText(view, "FINISH", (self.finish_line_a[0] - 30, self.finish_line_a[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
         return view
 
     def process_frame(self, frame: np.ndarray) -> list[dict[str, Any]]:
@@ -297,7 +297,7 @@ class RaceEngine:
                         })
                     self.was_inside_lane = car_inside_lane
 
-                    if self.was_before_finish and not current_before_finish:
+                    if not current_before_finish:
                         self.raw_time = max(0.0, time.time() - self.start_time)
                         self.final_time = self.raw_time + self.outside_count * PENALTY_SECONDS
                         self.game_running = False

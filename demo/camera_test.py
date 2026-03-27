@@ -592,13 +592,7 @@ try:
             game["was_inside_lane"] = car_inside_lane
 
             current_before_finish = not point_has_passed_line((cx, cy), end_pt, finish_dir)
-            finish_line_distance = point_to_segment_distance((cx, cy), finish_line_a, finish_line_b)
-            finish_near_distance = max(14.0, road_thickness * 0.45)
-            touching_or_near_finish = finish_line_distance <= finish_near_distance
-
-            if game["game_running"] and (
-                (game["was_before_finish"] and not current_before_finish) or touching_or_near_finish
-            ):
+            if game["game_running"] and not current_before_finish:
                 game["raw_time"] = time.time() - game["start_time"]
                 game["final_time"] = game["raw_time"] + game["outside_count"] * PENALTY_SECONDS
                 game["game_running"] = False
