@@ -197,74 +197,6 @@ def point_is_inside_lane(x, y, mask):
     return False
 
 
-def point_has_passed_line(point, line_point, direction_vec):
-    p = np.array(point, dtype=np.float32)
-    lp = np.array(line_point, dtype=np.float32)
-    return np.dot(p - lp, direction_vec) >= 0
-
-
-def detect_blue_finish_anchor(field_image):
-    if field_image is None:
-        return None
-
-    blue = field_image[:, :, 0]
-    green = field_image[:, :, 1]
-    red = field_image[:, :, 2]
-
-    # Detect strong blue text pixels ("FINISH" on the right side of the field image).
-    blue_mask = ((blue > 90) & (blue > green + 35) & (blue > red + 35)).astype(np.uint8) * 255
-    kernel = np.ones((3, 3), np.uint8)
-    blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel, iterations=1)
-
-    h, w = blue_mask.shape
-    roi_mask = np.zeros_like(blue_mask)
-    roi_mask[int(h * 0.45):, int(w * 0.62):] = 255
-    focus_mask = cv2.bitwise_and(blue_mask, roi_mask)
-
-    ys, xs = np.where(focus_mask > 0)
-    if xs.size == 0:
-        return None
-
-    x_min = int(xs.min())
-    x_max = int(xs.max())
-    y_min = int(ys.min())
-    y_max = int(ys.max())
-    bw = max(1, x_max - x_min + 1)
-    bh = max(1, y_max - y_min + 1)
-
-    # Shift left from text toward the nearby right-side lane.
-    anchor_x = max(0, x_min - int(max(80, bw * 2.2)))
-    # Use near the top of the vertical FINISH text to avoid snapping too low.
-    anchor_y = int(y_min + max(8, bh * 0.12))
-    return np.array([anchor_x, anchor_y], dtype=np.float32)
-
-
-def project_point_to_polyline(point, polyline_points, start_index=0):
-    best_dist = float("inf")
-    best_point = None
-    best_dir = None
-
-    for idx in range(max(0, start_index), len(polyline_points) - 1):
-        a = polyline_points[idx].astype(np.float32)
-        b = polyline_points[idx + 1].astype(np.float32)
-        ab = b - a
-        ab_len_sq = float(np.dot(ab, ab))
-        if ab_len_sq <= 1e-6:
-            continue
-
-        t = float(np.dot(point - a, ab) / ab_len_sq)
-        t = max(0.0, min(1.0, t))
-        q = a + t * ab
-        dist = float(np.linalg.norm(point - q))
-
-        if dist < best_dist:
-            best_dist = dist
-            best_point = q
-            best_dir = normalize(ab)
-
-    return best_point, best_dir, best_dist
-
-
 def reset_game():
     return {
         "game_running": False,
@@ -514,47 +446,31 @@ lane_mask = cv2.dilate(lane_mask, kernel, iterations=1)
 
 start_pt = track_points[0].astype(np.float32)
 next_start_pt = track_points[1].astype(np.float32)
-end_prev_pt = track_points[-2].astype(np.float32)
 end_pt = track_points[-1].astype(np.float32)
 
 start_dir = normalize(next_start_pt - start_pt)
-default_finish_dir = normalize(end_pt - end_prev_pt)
 
 start_perp = np.array([-start_dir[1], start_dir[0]], dtype=np.float32)
 line_half = road_thickness // 2 + 10
 
 start_line_a = tuple((start_pt + start_perp * line_half).astype(int))
 start_line_b = tuple((start_pt - start_perp * line_half).astype(int))
+# Finish line: use the LAST lane coordinate, draw horizontal (x-axis),
+# and set width equal to lane thickness.
 finish_line_point = end_pt.copy()
-finish_dir = default_finish_dir.copy()
+finish_center_x = int(round(finish_line_point[0]))
+finish_y = int(round(finish_line_point[1]))
+finish_half_width = max(6, road_thickness // 2)
+finish_x_min = max(0, finish_center_x - finish_half_width)
+finish_x_max = min(cam_w - 1, finish_center_x + finish_half_width)
+finish_line_a = (finish_x_min, finish_y)
+finish_line_b = (finish_x_max, finish_y)
+finish_stop_radius = max(18, int(road_thickness * 0.75))
 
-finish_anchor = detect_blue_finish_anchor(field_background)
-if finish_anchor is not None:
-    search_start_idx = max(0, int(len(track_points) * 0.65) - 1)
-    projected_point, projected_dir, projected_dist = project_point_to_polyline(
-        finish_anchor,
-        track_points.astype(np.float32),
-        start_index=search_start_idx,
-    )
-    if projected_point is not None and projected_dir is not None:
-        finish_line_point = projected_point
-        finish_dir = projected_dir
-        print(
-            f"Finish line snapped from blue label at ({int(finish_anchor[0])}, {int(finish_anchor[1])}) "
-            f"to lane point ({int(finish_line_point[0])}, {int(finish_line_point[1])})."
-        )
-    else:
-        print("Blue FINISH label detected, but lane snap failed. Using lane endpoint as finish line.")
-else:
-    print("Blue FINISH label not detected. Using lane endpoint as finish line.")
-
-finish_perp = np.array([-finish_dir[1], finish_dir[0]], dtype=np.float32)
-finish_line_a = tuple((finish_line_point + finish_perp * line_half).astype(int))
-finish_line_b = tuple((finish_line_point - finish_perp * line_half).astype(int))
-finish_line_a_np = np.array(finish_line_a, dtype=np.float32)
-finish_line_b_np = np.array(finish_line_b, dtype=np.float32)
-finish_line_vec = finish_line_b_np - finish_line_a_np
-finish_line_len_sq = float(np.dot(finish_line_vec, finish_line_vec))
+print(
+    f"Finish line locked to last coordinate at ({finish_center_x}, {finish_y}), "
+    f"x-span [{finish_x_min}, {finish_x_max}], stop radius {finish_stop_radius}px."
+)
 
 game = reset_game()
 push_event(make_state_payload("idle"))
@@ -652,10 +568,6 @@ try:
             else:
                 frame = detection_frame.copy()
 
-        # Visualize the active finish line that controls auto-stop timing.
-        cv2.line(frame, finish_line_a, finish_line_b, FINISH_COLOR, 3)
-        cv2.circle(frame, tuple(finish_line_point.astype(int)), 5, FINISH_COLOR, -1)
-
         hsv = cv2.cvtColor(detection_frame, cv2.COLOR_BGR2HSV)
         green_mask = cv2.inRange(hsv, lower, upper)
         contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -689,19 +601,10 @@ try:
                 })
             game["was_inside_lane"] = car_inside_lane
 
-            current_before_finish = not point_has_passed_line((cx, cy), finish_line_point, finish_dir)
-            on_finish_span = False
-            if finish_line_len_sq > 1e-6:
-                car_point = np.array([cx, cy], dtype=np.float32)
-                finish_t = float(np.dot(car_point - finish_line_a_np, finish_line_vec) / finish_line_len_sq)
-                on_finish_span = 0.0 <= finish_t <= 1.0
-            crossed_finish_segment = (
-                game["was_before_finish"]
-                and not current_before_finish
-                and on_finish_span
-            )
+            distance_to_finish = float(np.hypot(cx - finish_line_point[0], cy - finish_line_point[1]))
+            near_finish_point = distance_to_finish <= finish_stop_radius
 
-            if game["game_running"] and crossed_finish_segment:
+            if game["game_running"] and near_finish_point:
                 game["raw_time"] = time.time() - game["start_time"]
                 game["final_time"] = game["raw_time"] + game["outside_count"] * PENALTY_SECONDS
                 game["game_running"] = False
@@ -725,8 +628,6 @@ try:
                     final_time=game["final_time"],
                     penalty_count=game["outside_count"],
                 ))
-
-            game["was_before_finish"] = current_before_finish
 
         display_time = 0.0
         if game["game_running"]:
